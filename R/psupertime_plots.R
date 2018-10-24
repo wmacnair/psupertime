@@ -470,8 +470,10 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 
 	# define fn to handle y
 	get_y_in <- function(new_y) {
-		if ( length(new_y) != length(psuper_obj$y)) {
-			stop('new_y must be same length as original y')
+		if (is.null(new_x)) {
+			if ( length(new_y) != length(psuper_obj$y) ) {
+				stop('when no new_x given, new_y must be same length as original y')
+			}
 		}
 		if (!is.factor(new_y)) {
 			new_y 			= factor(new_y)

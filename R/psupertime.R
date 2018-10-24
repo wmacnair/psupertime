@@ -337,8 +337,8 @@ make_x_data <- function(x, sel_genes, params) {
 	missing_genes 	= setdiff(sel_genes, all_genes)
 	n_missing 		= length(missing_genes)
 	if ( n_missing>0 ) {
-		message(n_missing, ' genes missing:', sep='')
-		message(paste(missing_genes, collapse=', '))
+		message('    ', n_missing, ' genes missing:', sep='')
+		message('    ', paste(missing_genes, collapse=', '), sep='')
 	}
 	x_data 		= x_data[, intersect(sel_genes, all_genes)]
 
@@ -553,9 +553,9 @@ predict_glmnetcr_cumul <- function(object, newx=NULL, newy=NULL, ...) {
 	missing_g 	= setdiff(beta_genes, data_genes)
 	if (length(missing_g)>0) {
 		# decide which to keep
-		message("these genes are missing from the input data and won''t be used for projecting:")
-		message(paste(missing_g, collapse=', '))
-		message("this may affect the projection")
+		message("    these genes are missing from the input data and are not used for projecting:")
+		message('        ', paste(missing_g, collapse=', '), sep='')
+		message("    this may affect the projection\n")
 		both_genes 	= intersect(beta_genes, data_genes)
 
 		# tweak inputs accordingly
@@ -833,9 +833,9 @@ calc_proj_dt <- function(glmnet_best, x_data, y_labels, best_lambdas) {
 	data_genes 	= colnames(x_data)
 	missing_g 	= setdiff(coeff_genes, data_genes)
 	if (length(missing_g)>0) {
-		message("these genes are missing from the input data and won''t be used for projecting:")
-		message(paste(missing_g, collapse=', '))
-		message("this may affect the projection")
+		message("    these genes are missing from the input data and are not used for projecting:")
+		message("        ", paste(missing_g, collapse=', '), sep='')
+		message("    this may affect the projection")
 		both_genes 	= intersect(coeff_genes, data_genes)
 		x_data 		= x_data[, both_genes]
 		beta_best 	= beta_best[both_genes]
