@@ -9,7 +9,10 @@ Psupertime is an R package which uses single cell RNAseq data, where the cells h
 
 How to use this development version of the package:
 
-1) In terminal or Git Bash, get the code from here: `git clone https://gitlab.ethz.ch/wmacnair/psupertime.git`
+1) In terminal or Git Bash, get the code from here:
+```sh
+git clone https://gitlab.ethz.ch/wmacnair/psupertime.git
+```
 
 2) In R, 
 ```R
