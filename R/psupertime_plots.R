@@ -11,7 +11,7 @@ psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', ext='png') {
 	cat('plotting results\n')
 	g 			= plot_train_results(psuper_obj)
 	plot_file 	= file.path(output_dir, sprintf('%s training results.%s', tag, ext))
-	ggplot2::ggsave(plot_file, g, height=8, width=6)
+	ggplot2::ggsave(plot_file, g, height=6, width=6)
 
 	g 			= plot_labels_over_psupertime(psuper_obj)
 	plot_file 	= file.path(output_dir, sprintf('%s labels over psupertime.%s', tag, ext))
@@ -39,12 +39,13 @@ psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', ext='png') {
 #' @importFrom ggplot2 facet_grid
 #' @importFrom ggplot2 geom_line
 #' @importFrom ggplot2 geom_point
-#' @importFrom ggplot2 geom_pointrange
+#' @importFrom ggplot2 geom_linerange
 #' @importFrom ggplot2 geom_vline
 #' @importFrom ggplot2 ggplot
 #' @importFrom ggplot2 guides
 #' @importFrom ggplot2 labs
-#' @importFrom ggplot2 scale_colour_brewer
+#' @importFrom ggplot2 scale_colour_manual
+#' @importFrom ggplot2 scale_fill_brewer
 #' @importFrom ggplot2 scale_size_manual
 #' @importFrom ggplot2 theme_bw
 plot_train_results <- function(psuper_obj) {
@@ -58,36 +59,50 @@ plot_train_results <- function(psuper_obj) {
 
 	# where should vertical lines go?
 	lines_best 		= copy(psuper_obj$best_dt)
-	lines_best[, selected := score_var==params$sel_score ]
+	lines_best[, selected := score_var==params$score ]
 
 	# calc test results
 	test_scores_dt 	= calc_scores_for_one_fit(glmnet_best, x_test, y_test)
 
+	# put together for plot
+	plot_dt 		= rbind(
+		test_scores_dt[ , list(lambda, score_var, mean_score=score_val, Data='test') ],
+		mean_scores[ 	, list(lambda, score_var, mean_score=mean, Data='train') ]
+		)
+	plot_dt[, Data := factor(Data, levels=c('train', 'test'))]
+
 	# set up
 	g = ggplot() +
-		aes( x=log10(lambda), y=score_val )
+		aes( x=log10(lambda) )
+	
+	# plot each fold
+	g = g + geom_point(data=scores_dt, aes(fill=factor(fold), y=score_val), colour='transparent', shape=21 ) +
+		scale_fill_brewer( palette='Set1' )
 
-	# plot training data
-	g =	g + geom_point(data=scores_dt, aes(colour=factor(fold)) ) +
-		scale_colour_brewer( palette='Set1' ) +
-		geom_line(data=mean_scores, aes(y=mean), colour='grey' ) +
-		geom_pointrange(data=mean_scores, aes(y=mean, ymin=mean-se, ymax=mean+se), colour='grey' )
-
-	# plot test results
-	g = g + geom_line(data=test_scores_dt, colour='black') +
-		geom_point(data=test_scores_dt, colour='black')
+	# plot test and training data
+	g = g + geom_linerange(data=mean_scores, aes(ymin=mean-se, ymax=mean+se), colour='grey' ) +
+		geom_point(data=plot_dt, aes(y=mean_score, colour=Data) ) +
+		geom_line(data=plot_dt, aes(y=mean_score, colour=Data) ) +
+		scale_colour_manual( values=c('grey', 'black') )
 
 	# annotate with best lambdas, tidy up
 	g = g + geom_vline(data=lines_best, aes(xintercept=log10(best_lambda), size=selected), colour='grey', linetype='solid' ) +
 		geom_vline(data=lines_best, aes(xintercept=log10(next_lambda), size=selected), colour='grey', linetype='dashed' ) +
 		scale_size_manual( values = c(0.5, 1) ) +
-		guides( size=FALSE ) +
+		guides( size=FALSE )
+
+	# label nicely
+	g = g + 
 		facet_grid( score_var ~ ., scales='free_y' ) +
 		theme_bw() +
 		labs(
-			y 		= 'Accuracy measure'
-			,colour = 'Fold'
+			x 		= 'log10( lambda )'
+			,y 		= 'Accuracy measure'
+			,colour = 'Data'
+			,fill 	= 'Fold'
+			,title 	= 'Grey is mean over training data with line indicating SE; black is test data'
 			)
+
 	return(g)
 }
 

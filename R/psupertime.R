@@ -730,21 +730,21 @@ calc_scores_for_one_fit <- function(glmnet_fit, x_valid, y_valid) {
 #' @keywords internal
 calc_multiple_scores <- function(pred_classes, probs, y_valid, class_levels) {
 	# calculate some intermediate variables
-	y_valid_int 	= as.integer(y_valid)
-	pred_int 		= sapply(pred_classes, function(i) which(i==class_levels))
+	# y_valid_int 	= as.integer(y_valid)
+	# pred_int 		= sapply(pred_classes, function(i) which(i==class_levels))
 	# bin_mat 		= t(sapply(pred_classes, function(i) i==class_levels))
 	bin_mat 		= t(sapply(y_valid, function(i) i==class_levels))
 
 	# calculate optional scores
 	accuracy 		= mean(pred_classes==y_valid)
-	log_cohens_k 	= log10(mean( abs(pred_int - y_valid_int) ))
-	log_cohens_k_2 	= log10(mean( (pred_int - y_valid_int)^2 ))
+	# log_cohens_k 	= log10(mean( abs(pred_int - y_valid_int) ))
+	# log_cohens_k_2 	= log10(mean( (pred_int - y_valid_int)^2 ))
 	x_entropy 		= mean(x_entropy_fn(probs, bin_mat))
 
 	scores_vec 		= c(
 		accuracy 		= accuracy, 
-		log_cohens_k 	= log_cohens_k, 
-		log_cohens_k_2 	= log_cohens_k_2, 
+		# log_cohens_k 	= log_cohens_k, 
+		# log_cohens_k_2 	= log_cohens_k_2, 
 		x_entropy 		= x_entropy
 		)
 
