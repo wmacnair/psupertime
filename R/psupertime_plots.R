@@ -519,8 +519,8 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 	# plot grid
 	g = ggplot(counts_dt) +
 		aes( y=true, x=predicted ) +
-		geom_raster( aes_string(fill=plot_var) ) +
-		geom_raster(data=borders_dt, aes(y=true, x=predicted), fill=NA, colour='black', size=0.5) +
+		geom_tile( aes_string(fill=plot_var) ) +
+		geom_tile(data=borders_dt, aes(y=true, x=predicted), fill=NA, colour='black', size=0.5) +
 		geom_text( aes(label=N) ) +
 		scale_x_discrete( drop=FALSE ) +
 		scale_fill_distiller( palette='BuPu', direction=1, breaks=scales::pretty_breaks() )
