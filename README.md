@@ -1,13 +1,28 @@
-Hi Dario!
+# Psupertime
 
-For the moment, I haven't built the package, so you need to use devtools to run it. The documentation should all be there though.
+:wave: Hello User! :wave:
 
-Do your git clone / pull, then to load the functions you need to do: 
+Psupertime is an R package which uses single cell RNAseq data, where the cells have a known ordering (which may be fuzzy), to identify a small number of genes which place cells in that known order. It can be used for discovery of relevant genes, for identification of subpopulations, and characterization of further unknown or differently labelled data.
+
+
+## How to install / use
+
+How to use this development version of the package:
+
+1) In terminal or Git Bash, get the code from here: `git clone https://gitlab.ethz.ch/wmacnair/psupertime.git`
+
+2) In R, 
 ```R
-devtools::load_all('/path/to/psupertime')
+devtools::install('/path/to/psupertime')
+library('psupertime')
 ```
 
-Let me know if this causes any problems.
+This should load all of the code and relevant documentation. 
+
+## Suggestions
+
+Please add any issues or requests to the _Issues_ page. All feedback enthusiastically received.
 
 Cheers
+
 Will
