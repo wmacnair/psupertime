@@ -4,15 +4,15 @@
 \alias{psupertime_plot_all}
 \title{Convenience function to do multiple plots}
 \usage{
-psupertime_plot_all(psuper_obj, x, y, output_dir = ".", tag = "",
+psupertime_plot_all(psuper_obj, output_dir = ".", tag = "",
   ext = "png")
 }
 \arguments{
+\item{sce}{SingleCellExperiment class containing all cells and genes required}
+
 \item{x}{Matrix of log TPM values. Either this or sce should be provided, not both.}
 
 \item{y}{Vector of labels, which should have same length as number of columns in sce / x. Factor levels will be taken as the intended order for training.}
-
-\item{sce}{SingleCellExperiment class containing all cells and genes required}
 }
 \description{
 Convenience function to do multiple plots

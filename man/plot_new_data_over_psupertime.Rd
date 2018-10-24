@@ -9,9 +9,7 @@ plot_new_data_over_psupertime(psuper_obj, new_x, new_y, palette = "BrBG")
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}
 
-\item{new_x, new_y}{Optional data to predict from psuper_obj}
-
-\item{plot_var}{Variable to plot: prop_true is proportion of true labels, prop_predict is proportion of predicted labels, N is # of cells}
+\item{new_x, new_y}{Optional data to predict with psuper_obj}
 }
 \value{
 ggplot2 object

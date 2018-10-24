@@ -4,7 +4,8 @@
 \alias{plot_identified_gene_coefficients}
 \title{Plots top coefficients}
 \usage{
-plot_identified_gene_coefficients(psuper_obj, abs_cutoff = 0.1)
+plot_identified_gene_coefficients(psuper_obj, n = 20,
+  abs_cutoff = 0.05)
 }
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}
