@@ -124,8 +124,9 @@ make_col_vals <- function(y_labels, palette='RdBu') {
 		col_vals 	= RColorBrewer::brewer.pal(n_labels, palette)
 	} else {
 		col_pal 	= RColorBrewer::brewer.pal(max_col, palette)
-		col_vals 	= rev(grDevices::colorRampPalette(col_pal)(n_labels))
+		col_vals 	= grDevices::colorRampPalette(col_pal)(n_labels)
 	}
+	col_vals 	= rev(col_vals)
 
 	return(col_vals)
 }
