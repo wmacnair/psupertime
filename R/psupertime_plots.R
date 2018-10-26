@@ -25,8 +25,8 @@ psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', ext='png') {
 	plot_file 	= file.path(output_dir, sprintf('%s identified genes over psupertime.%s', tag, ext))
 	ggplot2::ggsave(plot_file, g, height=8, width=12)
 
-	g 				= plot_predictions_against_classes(psuper_obj)
-	plot_file 		= file.path(output_dir, sprintf('%s predictions over psupertime, original data.%s', tag, ext))
+	g 			= plot_predictions_against_classes(psuper_obj)
+	plot_file 	= file.path(output_dir, sprintf('%s predictions over psupertime, original data.%s', tag, ext))
 	ggplot2::ggsave(plot_file, g, height=6, width=10)
 }
 
@@ -100,7 +100,7 @@ plot_train_results <- function(psuper_obj) {
 			,y 		= 'Accuracy measure'
 			,colour = 'Data'
 			,fill 	= 'Fold'
-			,title 	= 'Grey is mean over training data with line indicating SE; black is test data'
+			,title 	= sprintf('%s used for model selection', params$score)
 			)
 
 	return(g)
@@ -153,21 +153,21 @@ plot_labels_over_psupertime <- function(psuper_obj, palette='RdBu') {
 	best_lambdas 	= psuper_obj$best_lambdas
 
 	# make nice colours
-	col_vals 		= make_col_vals(proj_dt$y_label, palette)
+	col_vals 		= make_col_vals(proj_dt$label_input, palette)
 
 	# find cutpoints
 	which_idx 	= best_lambdas$which_idx
 	cut_idx 	= stringr::str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
 	cuts_dt 	= data.table::data.table(
-		y_proj 		= c(NA, -(glmnet_best$beta[ cut_idx, which_idx ] + glmnet_best$a0[[ which_idx ]]))
-		,y_label 	= factor(levels(proj_dt$y_label), levels=levels(proj_dt$y_label))
+		psuper 			= c(NA, -(glmnet_best$beta[ cut_idx, which_idx ] + glmnet_best$a0[[ which_idx ]]))
+		,label_input 	= factor(levels(proj_dt$label_input), levels=levels(proj_dt$label_input))
 		)
 
 	g = ggplot(proj_dt) +
-		aes( x=y_proj, fill=y_label) +
+		aes( x=psuper, fill=label_input) +
 		geom_density( alpha=0.5, colour=NA ) +
 		scale_fill_manual( values=col_vals ) +
-		geom_vline( data=cuts_dt, aes(xintercept=y_proj, colour=y_label) ) +
+		geom_vline( data=cuts_dt, aes(xintercept=psuper, colour=label_input) ) +
 		scale_colour_manual( values=col_vals ) +
 		guides(
 			fill 	= guide_legend(override.aes = list(alpha=1))
@@ -255,16 +255,16 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, n_to_plot=25, pale
 
 	# set up data for plotting
 	plot_wide 	= cbind(proj_dt, data.table::data.table(x_data[, top_genes]))
-	plot_dt 	= data.table::melt.data.table(plot_wide, id=c('y_proj', 'y_label'), variable.name='symbol')
+	plot_dt 	= data.table::melt.data.table(plot_wide, id=c('psuper', 'label_input', 'label_psuper'), variable.name='symbol')
 	plot_dt[, symbol := factor(symbol, levels=top_genes)]
 
 	# get colours
-	col_vals 	= make_col_vals(plot_dt$y_label, palette)
+	col_vals 	= make_col_vals(plot_dt$label_input, palette)
 
 	# plot
 	g =	ggplot(plot_dt) +
-		aes( x=y_proj, y=value) +
-		geom_point( size=1, aes(colour=y_label) ) +
+		aes( x=psuper, y=value) +
+		geom_point( size=1, aes(colour=label_input) ) +
 		geom_smooth(se=FALSE, colour='black') +
 		scale_colour_manual( values=col_vals ) +
 		scale_shape_manual( values=c(1, 16) ) +
@@ -309,13 +309,13 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, palett
 	# restrict to just this set
 	extra_genes = intersect(extra_genes, colnames(x_all))
 	plot_wide 	= cbind(proj_dt, data.table(x_all[, extra_genes]))
-	plot_dt 	= data.table::melt.data.table(plot_wide, id=c('y_proj', 'y_label', 'test'), variable.name='symbol')
-	corrs_dt 	= plot_dt[, list(abs_cor = abs(cor(y_proj, value))), by=symbol]
+	plot_dt 	= data.table::melt.data.table(plot_wide, id=c('psuper', 'label_input', 'label_psuper'), variable.name='symbol')
+	corrs_dt 	= plot_dt[, list(abs_cor = abs(cor(psuper, value))), by=symbol]
 	data.table::setorder(corrs_dt, -abs_cor)
 	plot_dt[, symbol := factor(symbol, levels=corrs_dt$symbol)]
 
 	# set up plot
-	col_vals 	= make_col_vals(plot_dt$y_label, palette)
+	col_vals 	= make_col_vals(plot_dt$label_input, palette)
 	n_genes 	= length(extra_genes)
 	plot_ratio 	= 5/4
 	ncol 		= ceiling(sqrt(n_genes*plot_ratio))
@@ -324,8 +324,8 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, palett
 
 	# plot
 	g =	ggplot(plot_dt) +
-		aes( x=y_proj, y=value ) +
-		geom_point( size=1, aes(colour=y_label) ) +
+		aes( x=psuper, y=value ) +
+		geom_point( size=1, aes(colour=label_input) ) +
 		geom_smooth(se=FALSE, colour='black') +
 		scale_colour_manual( values=col_vals ) +
 		scale_shape_manual( values=c(1, 16) ) +
@@ -408,22 +408,22 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrB
 	proj_new 		= project_onto_psupertime(psuper_obj, new_x, new_y)
 
 	# make nice colours
-	col_vals 		= make_col_vals(proj_new$y_label, palette)
+	col_vals 		= make_col_vals(proj_new$label_input, palette)
 
 	# find cutpoints
 	glmnet_best 	= psuper_obj$glmnet_best
 	which_idx 		= psuper_obj$best_lambdas$which_idx
 	cut_idx 		= stringr::str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
 	cuts_dt 		= data.table::data.table(
-		y_proj 			= -(glmnet_best$beta[ cut_idx, which_idx ] + glmnet_best$a0[[ which_idx ]])
+		psuper 			= -(glmnet_best$beta[ cut_idx, which_idx ] + glmnet_best$a0[[ which_idx ]])
 		)
 
 	# do plot
 	g = ggplot(proj_new) +
-		aes( x=y_proj, fill=y_label) +
+		aes( x=psuper, fill=label_input) +
 		geom_density( alpha=0.5, colour=NA ) +
 		scale_fill_manual( values=col_vals ) +
-		geom_vline( data=cuts_dt, aes(xintercept=y_proj), colour='grey' ) +
+		geom_vline( data=cuts_dt, aes(xintercept=psuper), colour='grey' ) +
 		scale_colour_manual( values=col_vals ) +
 		guides(
 			fill 	= guide_legend(override.aes = list(alpha=1))
@@ -448,7 +448,6 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrB
 #' @param plot_var Variable to plot: prop_true is proportion of true labels, prop_predict is proportion of predicted labels, N is # of cells
 #' @return ggplot2 object
 #' @export
-#' @keywords internal
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 expand_limits
 #' @importFrom ggplot2 geom_text
@@ -538,5 +537,243 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 			,fill 	= plot_label
 			) +
 		theme_bw()
+	return(g)
+}
+
+#' Projects two different psupertimes onto each other
+#'
+#' @param psuper_1, psuper_2 Two previously calculated psupertime objects
+#' @param labels Character vector of length two, labelling the psupertime inputs
+#' @return data.table containing projections in both directions
+#' @export
+double_psupertime <- function(psuper_1, psuper_2, run_names=NULL) {
+	# check run_names
+	if ( is.null(run_names) ) {
+		run_names 	= c('1','2')
+		message('using default values for run_names:', paste(run_names, sep=', '))
+	} else {
+		if ( !is.character(run_names) | length(unique(run_names))!=2 ) {
+			stop('run_names must be character vector of length two with no repeated values')
+		}
+	}
+
+	# repack
+	psuper_list 	= list(psuper_1, psuper_2)
+	n_psupers 		= length(psuper_list)
+	# names(psuper_list) 	= run_names
+
+	# loop through projections on both
+	doubles_dt 		= data.table()
+	for (ii in 1:n_psupers) {
+		# unload
+		psuper_ii 		= psuper_list[[ii]]
+		label_ii 		= run_names[[ii]]
+
+		for (jj in 1:n_psupers) {
+			# unload
+			psuper_jj 		= psuper_list[[jj]]
+			label_jj 		= run_names[[jj]]
+
+			# get appropriate projection
+			if (ii == jj) {
+				proj_ii_on_jj 	= psuper_ii$proj_dt
+			} else {
+				proj_ii_on_jj 	= project_onto_psupertime(psuper_jj, psuper_ii$x_data, psuper_ii$y)
+			}
+
+			# label
+			proj_ii_on_jj[, input 		:= label_ii ]
+			proj_ii_on_jj[, projection 	:= label_jj ]
+			n_digits = ceiling(log10(nrow(psuper_ii$x_data)))
+			proj_ii_on_jj[, cell_id 	:= sprintf(sprintf('%%s_%%0%dd', n_digits), label_ii, 1:nrow(psuper_ii$x_data)) ]
+
+			# store
+			doubles_dt 		= rbind(doubles_dt, proj_ii_on_jj)
+		}
+	}
+
+	# sort out levels
+	lvls_all 		= c()
+	for (ii in 1:n_psupers) {
+		lvls_temp 	= setdiff(levels(psuper_list[[ii]]$y), lvls_all)
+		lvls_all 	= c(lvls_all, lvls_temp)
+	}
+	doubles_dt[, label_input := factor(label_input, levels=lvls_all) ]
+
+	# make wide, sort out levels?
+	doubles_wide 	= dcast(doubles_dt, input + cell_id + label_input ~ projection, value.var=c('psuper', 'label_psuper'))
+	for (ii in 1:n_psupers) {
+		label 	= run_names[[ii]]
+		levels(doubles_dt[[ paste0('label_psuper_', label) ]]) 	= levels(psuper_list$y)
+	}
+
+	# put into list
+	double_obj 	= list(
+		run_names 		= run_names
+		,doubles_dt 	= doubles_dt
+		,doubles_wide 	= doubles_wide
+		)
+	return(double_obj)
+}
+
+#' Projects two different psupertimes onto each other, using points, side by side
+#'
+#' @param double_obj Result of applying double_psupertime to two previously calculated psupertime objects
+#' @param psuper_1, psuper_2 Two previously calculated psupertime objects
+#' @param run_names Character vector of length two, labelling the psupertime inputs
+#' @return ggplot object plotting the two against each other
+#' @export
+#' @importFrom ggplot2 aes_string
+#' @importFrom ggplot2 facet_grid
+#' @importFrom ggplot2 geom_point
+#' @importFrom ggplot2 ggplot
+#' @importFrom ggplot2 labs
+#' @importFrom ggplot2 scale_colour_manual
+#' @importFrom ggplot2 theme_bw
+plot_double_psupertime <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run_names=NULL) {
+	# check inputs
+	if (is.null(double_obj)) {
+		if ( is.null(psuper_1) | is.null(psuper_2) ) {
+			stop('either a double_obj must be given, or psuper_1 and psuper_2 must both be given')
+			double_obj 		= double_psupertime(psuper_1, psuper_2, run_names)
+		}
+	}
+
+	# unpack
+	run_names 		= double_obj$run_names
+	label_x 		= run_names[[1]]
+	label_y 		= run_names[[2]]
+	doubles_wide 	= double_obj$doubles_wide
+
+	# make colours
+	col_vals 		= make_col_vals(doubles_wide$label_input)
+
+	# add facet labels
+	plot_dt 		= copy(doubles_wide)
+	plot_dt[, input_label := paste0('Input data: ', input) ]
+
+	# do some plotting
+	g = ggplot(plot_dt) +
+		aes_string(
+			x 			= paste0('psuper_', label_x)
+			,y 			= paste0('psuper_', label_y)
+			,colour 	= paste0('label_input')
+			) +
+		geom_point() +
+		scale_colour_manual( values=col_vals ) +
+		facet_grid( . ~ input_label) +
+		theme_bw() +
+		labs(
+			x 			= paste0('Psupertime trained on ', label_x)
+			,y 			= paste0('Psupertime trained on ', label_y)
+			,colour 	= 'Known\nlabels'
+			)
+
+	return(g)
+}
+
+#' Projects two different psupertimes on top of each other
+#'
+#' @param double_obj Result of applying double_psupertime to two previously calculated psupertime objects
+#' @param psuper_1, psuper_2 Two previously calculated psupertime objects
+#' @param run_names Character vector of length two, labelling the psupertime inputs
+#' @return ggplot object plotting the two against each other
+#' @export
+#' @importFrom ggplot2 aes_string
+#' @importFrom ggplot2 geom_density2d
+#' @importFrom ggplot2 ggplot
+#' @importFrom ggplot2 labs
+#' @importFrom ggplot2 scale_colour_brewer
+#' @importFrom ggplot2 theme_bw
+plot_double_psupertime_contour <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run_names=NULL) {
+	# check run_names
+	if ( is.null(run_names) ) {
+		run_names 	= c('1','2')
+		message('using default values for run_names:', paste(run_names, sep=', '))
+	} else {
+		if ( !is.character(run_names) | length(unique(run_names))!=2 ) {
+			stop('run_names must be character vector of length two with no repeated values')
+		}
+	}
+	# check inputs
+	if (is.null(double_obj)) {
+		if ( is.null(psuper_1) | is.null(psuper_2) ) {
+			stop('either a double_obj must be given, or psuper_1 and psuper_2 must both be given')
+			double_obj 		= double_psupertime(psuper_1, psuper_2, run_names)
+		}
+	}
+
+	# unpack
+	run_names 		= double_obj$run_names
+	label_x 		= run_names[[1]]
+	label_y 		= run_names[[2]]
+	doubles_wide 	= double_obj$doubles_wide
+
+	# do some plotting
+	g = ggplot(doubles_wide) +
+		aes_string(
+			x 			= paste0('psuper_', label_x)
+			,y 			= paste0('psuper_', label_y)
+			,colour 	= 'input'
+			) +
+		geom_density2d() +
+		scale_colour_brewer( palette='Set1' ) +
+		theme_bw() +
+		labs(
+			x 			= paste0('Psupertime run on ', label_x)
+			,y 			= paste0('Psupertime run on ', label_y)
+			,colour 	= 'Input\ndata'
+			)
+
+	return(g)
+}
+
+#' Compares coefficients for genes learned from different psupertimes
+#'
+#' @param psuper_1, psuper_2 Two previously calculated psupertime objects
+#' @param run_names Character vector of length two, labelling the psupertime inputs
+#' @return ggplot object plotting the two sets of coefficients
+#' @export
+#' @importFrom ggplot2 aes
+#' @importFrom ggplot2 aes
+#' @importFrom ggplot2 geom_point
+#' @importFrom ggplot2 ggplot
+#' @importFrom ggplot2 labs
+#' @importFrom ggplot2 theme_bw
+plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
+	# check run_names
+	if ( is.null(run_names) ) {
+		run_names 	= c('1','2')
+		message('using default values for run_names:', paste(run_names, sep=', '))
+	} else {
+		if ( !is.character(run_names) | length(unique(run_names))!=2 ) {
+			stop('run_names must be character vector of length two with no repeated values')
+		}
+	}
+
+	# get genes from both
+	old_names 	= c('beta', 'abs_beta')
+	genes_1_dt 	= psuper_1$beta_dt[ abs_beta > 0 ]
+	data.table::setnames(genes_1_dt, old_names, paste0(old_names, '_1'))
+	genes_2_dt 	= psuper_2$beta_dt[ abs_beta > 0 ]
+	data.table::setnames(genes_2_dt, old_names, paste0(old_names, '_2'))
+
+	# join together, tidy up
+	genes_dt 	= merge(genes_1_dt, genes_2_dt, by='symbol', all=TRUE, )
+	genes_dt[ is.na(beta_1), beta_1 := 0 ]
+	genes_dt[ is.na(abs_beta_1), abs_beta_1 := 0 ]
+	genes_dt[ is.na(beta_2), beta_2 := 0 ]
+	genes_dt[ is.na(abs_beta_2), abs_beta_2 := 0 ]
+
+	# plot
+	g = ggplot(genes_dt) +
+		aes( x=beta_1, y=beta_2 ) +
+		geom_point( alpha=0.5 ) +
+		theme_bw() +
+		labs(
+			x 		= paste0('Coefficient for ', run_names[[1]])
+			,y 		= paste0('Coefficient for ', run_names[[2]])
+			)
+
 	return(g)
 }

@@ -2,16 +2,16 @@
 % Please edit documentation in R/psupertime.R
 \name{calc_expressed_genes}
 \alias{calc_expressed_genes}
-\title{Check}
+\title{Restrict to genes with minimum proportion of expression defined in params$min_expression}
 \usage{
-calc_expressed_genes(sce, params)
+calc_expressed_genes(x, params)
 }
 \arguments{
-\item{sce}{SingleCellExperiment class containing all cells and genes required}
+\item{x}{SingleCellExperiment class containing all cells and genes required}
 
 \item{params}{List of all parameters specified.}
 }
 \description{
-Check
+Restrict to genes with minimum proportion of expression defined in params$min_expression
 }
 \keyword{internal}

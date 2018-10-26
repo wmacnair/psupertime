@@ -20,4 +20,3 @@ ggplot2 object
 \description{
 Plots confusion matrix of true labels against predicted labels.
 }
-\keyword{internal}

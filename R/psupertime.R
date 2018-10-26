@@ -64,14 +64,18 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 		if ( !('logcounts' %in% names(SummarizedExperiment::assays(x))) ) {
 			stop('if x is a SingleCellExperiment, it must contain the assay logcounts')
 		}
-		x_class 	= 'sce'
+		if (ncol(x)!=length(y)) {
+			stop('length of y must be same as number of cells (columns) in SingleCellExperiment x')
+		}
 	} else if ( is.matrix(x) & is.numeric(x) ) {
-		x_class 	= 'matrix'
+		if (nrow(x)!=length(y)) {
+			stop('length of y must be same as number of rows in matrix x')
+		}
+		if ( is.null(colnames(x)) ) {
+			stop('column names of x must be given, as gene names')
+		}
 	} else {
 		stop('x must be either a SingleCellExperiment or a matrix of counts')
-	}
-	if (ncol(x)!=length(y)) {
-		stop('length of y must be same as number of columns in x')
 	}
 	if (!is.factor(y)) {
 		y 	= factor(y)
@@ -154,8 +158,7 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 
 	# put into list
 	params 	= list(
-		x_class 		= x_class
-		,sel_genes 		= sel_genes
+		sel_genes 		= sel_genes
 		,hvg_cutoff 	= hvg_cutoff
 		,bio_cutoff 	= bio_cutoff
 		,smooth 		= smooth
@@ -181,12 +184,14 @@ select_genes <- function(x, params) {
 	# unpack
 	sel_genes 	= params$sel_genes
 	if ( sel_genes=='hvg' ) {
-		if ( params$x_class == 'matrix' ) {
-			sce 		= SingleCellExperiment::SingleCellExperiment(assays = list(logcounts = x))
-		} else {
+		if ( class(x)=='SingleCellExperiment' ) {
 			sce 		= x
-		}
-		sel_genes 	= calc_hvg_genes(x, params, do_plot=FALSE)
+		} else if ( class(x)=='matrix' ) {
+			sce 		= SingleCellExperiment::SingleCellExperiment(assays = list(logcounts = x))
+		} else { stop('class of x must be either matrix or SingleCellExperiment') }
+
+		# calculate selected genes
+		sel_genes 	= calc_hvg_genes(sce, params, do_plot=FALSE)
 
 	} else if ( sel_genes=='list' ) {
 		sel_genes 	= params$gene_list
@@ -210,7 +215,7 @@ select_genes <- function(x, params) {
 		expressed_genes 	= calc_expressed_genes(x, params)
 
 		# list missing genes
-		missing_g 	= setdiff(sel_genes, expressed_genes)
+		missing_g 			= setdiff(sel_genes, expressed_genes)
 		if (length(missing_g)>0) {
 			message('the following genes have insufficient expression and will not be plotted:')
 			message(paste(missing_g, collapse=', '))
@@ -268,23 +273,23 @@ calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	return(sel_genes)
 }
 
-#' Check 
+#' Restrict to genes with minimum proportion of expression defined in params$min_expression
 #'
-#' @param sce SingleCellExperiment class containing all cells and genes required
+#' @param x SingleCellExperiment class containing all cells and genes required
 #' @param params List of all parameters specified.
 #' @keywords internal
-calc_expressed_genes <- function(sce, params) {
+calc_expressed_genes <- function(x, params) {
 	# check whether necessary
 	if (params$min_expression==0) {
-		return(rownames(sce))
+		return(rownames(x))
 	}
 
 	# otherwise calculate it
-	if (params$x_class=='sce') {
-		x_mat 			= SummarizedExperiment::assay(sce, 'logcounts')
-	} else {
-		x_mat 			= x
-	}
+	if ( class(x)=='SingleCellExperiment' ) {
+		x_mat 		= SummarizedExperiment::assay(x, 'logcounts')
+	} else if ( class(x)=='matrix' ) {
+		x_mat 		= x
+	} else { stop('x must be either SingleCellExperiment or matrix') }
 	prop_expressed 	= rowMeans( x_mat>0 )
 	expressed_genes = names(prop_expressed[ prop_expressed>params$min_expression ])
 
@@ -326,19 +331,21 @@ get_go_list <- function(dirs) {
 make_x_data <- function(x, sel_genes, params) {
 	message('processing data')
 	# get matrix
-	if (params$x_class=='sce') {
+	if ( class(x)=='SingleCellExperiment' ) {
 		x_data 		= t(SummarizedExperiment::assay(x, 'logcounts'))
+	} else if ( class(x)=='matrix' ) {
+		x_data 		= x
 	} else {
-		x_data 		= t(x)
+		stop('x must be either a SingleCellExperiment or a matrix of counts')
 	}
 
 	# check if any genes missing, restrict to selected genes
-	all_genes 		= rownames(x)
+	all_genes 		= colnames(x_data)
 	missing_genes 	= setdiff(sel_genes, all_genes)
 	n_missing 		= length(missing_genes)
 	if ( n_missing>0 ) {
 		message('    ', n_missing, ' genes missing:', sep='')
-		message('    ', paste(missing_genes, collapse=', '), sep='')
+		message('    ', paste(missing_genes[1:min(n_missing,20)], collapse=', '), sep='')
 	}
 	x_data 		= x_data[, intersect(sel_genes, all_genes)]
 
@@ -822,32 +829,37 @@ get_best_fit <- function(x_train, y_train, params) {
 #' @keywords internal
 calc_proj_dt <- function(glmnet_best, x_data, y_labels, best_lambdas) {
 	# unpack
-	which_idx 	= best_lambdas$which_idx
+	which_idx 		= best_lambdas$which_idx
 
 	# get best one
-	cut_idx 	= stringr::str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
-	beta_best 	= glmnet_best$beta[!cut_idx, which_idx]
+	cut_idx 		= stringr::str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
+	beta_best 		= glmnet_best$beta[!cut_idx, which_idx]
 
 	# remove any missing genes if necessary
-	coeff_genes = names(beta_best)
-	data_genes 	= colnames(x_data)
-	missing_g 	= setdiff(coeff_genes, data_genes)
-	if (length(missing_g)>0) {
+	coeff_genes 	= names(beta_best)
+	data_genes 		= colnames(x_data)
+	missing_genes 	= setdiff(coeff_genes, data_genes)
+	n_missing 		= length(missing_genes)
+	if ( n_missing>0 ) {
 		message("    these genes are missing from the input data and are not used for projecting:")
-		message("        ", paste(missing_g, collapse=', '), sep='')
+		message("        ", paste(missing_genes[1:min(n_missing,20)], collapse=', '), sep='')
 		message("    this may affect the projection")
-		both_genes 	= intersect(coeff_genes, data_genes)
-		x_data 		= x_data[, both_genes]
-		beta_best 	= beta_best[both_genes]
+		both_genes 		= intersect(coeff_genes, data_genes)
+		x_data 			= x_data[, both_genes]
+		beta_best 		= beta_best[both_genes]
 	}
 
 	# a0_best 	= glmnet_best$a0[[which_idx]]
 	# y_proj 		= a0_best + x_data %*% matrix(beta_best, ncol=1)
-	y_proj 		= x_data %*% matrix(beta_best, ncol=1)
+	psuper 			= x_data %*% matrix(beta_best, ncol=1)
+	predictions 	= predict_glmnetcr_cumul(glmnet_best, x_data, y_labels)
+	pred_classes 	= factor(predictions$class[, which_idx], levels=levels(glmnet_best$y))
 
+	# put into data.table
 	proj_dt 	= data.table::data.table(
-		y_proj 		= y_proj[, 1]
-		,y_label 	= y_labels
+		psuper 			= psuper[, 1]
+		,label_input 	= y_labels
+		,label_psuper 	= pred_classes
 		)
 	# proj_dt 	= data.table::data.table(
 	# 	y_proj 		= y_proj[, 1]
