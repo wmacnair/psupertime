@@ -33,6 +33,8 @@ psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', ext='png', o
 
 	# do GO term analysis if we can
 	go_dt 		= psupertime_go_analysis(psuper_obj, org_mapping=org_mapping)
+	go_file 	= file.path(output_dir, sprintf('%s go analysis.txt', tag))
+	data.table::fwrite(go_dt, file=go_file)
 }
 
 #' Plot results of training
@@ -783,7 +785,6 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 	return(g)
 }
 
-
 #' GO enrichment analysis for genes learned from different psupertimes
 #'
 #' @param psuper_obj A previously calculated psupertime object
@@ -791,14 +792,6 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 #' @return data.table containing results of GO enrichment analysis
 #' @export
 psupertime_go_analysis <- function(psuper_obj, org_mapping='org.Mm.eg.db') {
-	# unpack
-	beta_dt 		= psuper_obj$beta_dt
-	n_nonzero 		= sum(beta_dt$abs_beta > 0)
-	if ( n_nonzero == 0 ) {
-		message('no non-zero genes so not doing GO')
-		next
-	}
-
 	# can we do this?
 	if ( !requireNamespace("topGO", quietly=TRUE) ) {
 		message('topGO not installed; not doing GO analysis')
@@ -806,33 +799,44 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping='org.Mm.eg.db') {
 	}
 	library('topGO')
 
+	# unpack
+	psuper 			= scale(psuper_obj$proj_dt$psuper)
+	n_obs 			= length(psuper)
+	x_data 			= psuper_obj$x_data
+
+	# calculate correlations
+	corrs 			= as.vector(matrix(psuper, nrow=1) %*% x_data) / n_obs
+	names(corrs) 	= colnames(x_data)
+
+	# calculate p values for these
+	t_stat 			= (corrs*sqrt(n_obs-2))/sqrt(1-corrs^2)
+	p_vals 			= 2*(1 - pt(abs(t_stat),(n_obs-2)))
+
 	# do GO in various ways
-	go_dt 		= data.table::data.table()
+	go_dt 			= data.table::data.table()
 	for (up_or_down in c('both', 'up', 'down')) {
 		# do ranking
 		if (up_or_down=='both') {
-			beta_temp 	= beta_dt[, list(symbol, score=abs_beta)]
+			scores 		= abs(corrs)
 
 		} else if (up_or_down=='up') {
-			beta_temp 	= beta_dt[, list(symbol, score=beta)]
+			scores 		= corrs
 
 		} else if (up_or_down=='down') {
-			beta_temp 	= beta_dt[, list(symbol, score=-beta)]
+			scores 		= -corrs
 
 		}
-		beta_temp[ score < 0, score := 0 ]
-		setorder(beta_temp, -score)
-		if ( sum(beta_temp$score > 0)==0 ) {
+		scores[ scores < 0 ] 	= 0
+		scores 		= sort(scores, decreasing=TRUE)
+		if ( sum(scores > 0)==0 ) {
 			next
 		}
 
 		# make topGO object
-		gene_list 			= beta_temp$score
-		names(gene_list) 	= beta_temp$symbol
 		topGO_data = new("topGOdata", 
 			description 		= up_or_down, 
-			allGenes 			= gene_list, 
-			geneSel 			= function(x) {x>0},
+			allGenes 			= scores, 
+			geneSel 			= function(x) {x>0.1},
 			annot 				= topGO::annFUN.org, 
 			mapping 			= org_mapping, 
 			ontology 			= 'BP',
@@ -858,8 +862,18 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping='org.Mm.eg.db') {
 		go_dt 		= rbind(go_dt, go_temp)
 	}
 
+	# change column order
+	setcolorder(go_dt, c('direction', 'rank'))
 	# print top terms
-	print(go_dt[ rank <= 10 ])
+	p_cutoff 		= 5e-2
+	n_terms_cutoff 	= 5
+	print_dt 		= go_dt[ weightFisher < p_cutoff & Significant>n_terms_cutoff ]
+	if (nrow(print_dt)==0) {
+		message(sprintf('no GO terms met the cutoffs (p-value < %.1e and at least %d genes significant)', p_cutoff, n_terms_cutoff))
+	} else {
+		message('Significant GO terms:')
+		print(print_dt)
+	}
 
 	return(go_dt)
 }

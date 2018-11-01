@@ -5,14 +5,18 @@
 \title{Convenience function to do multiple plots}
 \usage{
 psupertime_plot_all(psuper_obj, output_dir = ".", tag = "",
-  ext = "png")
+  ext = "png", org_mapping = "org.Mm.eg.db")
 }
 \arguments{
-\item{sce}{SingleCellExperiment class containing all cells and genes required}
+\item{psuper_obj}{Psupertime object, output from psupertime}
 
-\item{x}{Matrix of log TPM values. Either this or sce should be provided, not both.}
+\item{output_dir}{Directory to save to}
 
-\item{y}{Vector of labels, which should have same length as number of columns in sce / x. Factor levels will be taken as the intended order for training.}
+\item{tag}{Label for all files}
+
+\item{ext}{Image format for outputs, compatible with ggsave (eps, ps, tex, pdf, jpeg, tiff, png, bmp, svg, wmf)}
+
+\item{org_mapping}{Organism to use for annotation in GO enrichment analysis}
 }
 \description{
 Convenience function to do multiple plots
