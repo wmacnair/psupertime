@@ -2,11 +2,13 @@
 
 #' Convenience function to do multiple plots
 #'
-#' @param sce SingleCellExperiment class containing all cells and genes required
-#' @param x Matrix of log TPM values. Either this or sce should be provided, not both.
-#' @param y Vector of labels, which should have same length as number of columns in sce / x. Factor levels will be taken as the intended order for training.
+#' @param psuper_obj Psupertime object, output from psupertime
+#' @param output_dir Directory to save to
+#' @param tag Label for all files
+#' @param ext Image format for outputs, compatible with ggsave (eps, ps, tex, pdf, jpeg, tiff, png, bmp, svg, wmf)
+#' @param org_mapping Organism to use for annotation in GO enrichment analysis
 #' @export
-psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', ext='png') {
+psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', ext='png', org_mapping='org.Mm.eg.db') {
 	# validate model
 	cat('plotting results\n')
 	g 			= plot_train_results(psuper_obj)
@@ -28,6 +30,9 @@ psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', ext='png') {
 	g 			= plot_predictions_against_classes(psuper_obj)
 	plot_file 	= file.path(output_dir, sprintf('%s predictions over psupertime, original data.%s', tag, ext))
 	ggplot2::ggsave(plot_file, g, height=6, width=10)
+
+	# do GO term analysis if we can
+	go_dt 		= psupertime_go_analysis(psuper_obj, org_mapping=org_mapping)
 }
 
 #' Plot results of training
@@ -776,4 +781,85 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 			)
 
 	return(g)
+}
+
+
+#' GO enrichment analysis for genes learned from different psupertimes
+#'
+#' @param psuper_obj A previously calculated psupertime object
+#' @param org_mapping Organism to use for annotations
+#' @return data.table containing results of GO enrichment analysis
+#' @export
+psupertime_go_analysis <- function(psuper_obj, org_mapping='org.Mm.eg.db') {
+	# unpack
+	beta_dt 		= psuper_obj$beta_dt
+	n_nonzero 		= sum(beta_dt$abs_beta > 0)
+	if ( n_nonzero == 0 ) {
+		message('no non-zero genes so not doing GO')
+		next
+	}
+
+	# can we do this?
+	if ( !requireNamespace("topGO", quietly=TRUE) ) {
+		message('topGO not installed; not doing GO analysis')
+		return()
+	}
+	library('topGO')
+
+	# do GO in various ways
+	go_dt 		= data.table::data.table()
+	for (up_or_down in c('both', 'up', 'down')) {
+		# do ranking
+		if (up_or_down=='both') {
+			beta_temp 	= beta_dt[, list(symbol, score=abs_beta)]
+
+		} else if (up_or_down=='up') {
+			beta_temp 	= beta_dt[, list(symbol, score=beta)]
+
+		} else if (up_or_down=='down') {
+			beta_temp 	= beta_dt[, list(symbol, score=-beta)]
+
+		}
+		beta_temp[ score < 0, score := 0 ]
+		setorder(beta_temp, -score)
+		if ( sum(beta_temp$score > 0)==0 ) {
+			next
+		}
+
+		# make topGO object
+		gene_list 			= beta_temp$score
+		names(gene_list) 	= beta_temp$symbol
+		topGO_data = new("topGOdata", 
+			description 		= up_or_down, 
+			allGenes 			= gene_list, 
+			geneSel 			= function(x) {x>0},
+			annot 				= topGO::annFUN.org, 
+			mapping 			= org_mapping, 
+			ontology 			= 'BP',
+			ID 					= 'symbol'
+			)
+
+		# run enrichment tests on these, extract results
+		go_weight 	= topGO::runTest(topGO_data, algorithm = "weight01", statistic = "fisher")
+		go_temp 	= data.table(topGO::GenTable(topGO_data, 
+			weightFisher 	= go_weight, 
+			orderBy 		= 'weightFisher', 
+			ranksOf 		= 'weightFisher', 
+			topNodes 		= 1000
+			))
+		data.table::setnames(go_temp, 'weightFisher', 'temp')
+		go_temp[, weightFisher := as.numeric(temp) ]
+		go_temp[ temp == '< 1e-30', weightFisher := 9e-31 ]
+		go_temp[, temp := NULL ]
+		go_temp[, direction := up_or_down]
+		go_temp[, rank := 1:nrow(go_temp)]
+
+		# store
+		go_dt 		= rbind(go_dt, go_temp)
+	}
+
+	# print top terms
+	print(go_dt[ rank <= 10 ])
+
+	return(go_dt)
 }
