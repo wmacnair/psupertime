@@ -17,9 +17,6 @@ psupertime <- function(x, y, y_labels=NULL,
 		min_expression, penalization, method, score, 
 		n_folds, test_propn, lambdas, max_iters, seed)
 
-	# get ready
-	set.seed(params$seed)
-
 	# select genes, do processing of data
 	sel_genes 		= select_genes(x, params)
 	x_data 			= make_x_data(x, sel_genes, params)
@@ -171,6 +168,7 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 		,test_propn 	= test_propn
 		,lambdas 		= lambdas
 		,max_iters 		= max_iters
+		,seed 			= seed
 		)
 	return(params)
 }
@@ -406,6 +404,7 @@ make_x_data <- function(x, sel_genes, params) {
 #' @return Indices for test set
 #' @keywords internal
 get_test_idx <- function(y, params) {
+	set.seed(params$seed)
 	n_samples 	= length(y)
 	test_idx 	= sample(n_samples, round(n_samples*params$test_propn))
 	test_idx 	= 1:n_samples %in% test_idx
@@ -415,6 +414,7 @@ get_test_idx <- function(y, params) {
 
 #' @keywords internal
 get_fold_list <- function(y_train, params) {
+	set.seed(params$seed + 1)
 	n_samples 		= length(y_train)
 	fold_labels 	= rep_len(1:params$n_folds, n_samples)
 	fold_list 		= fold_labels[ sample(n_samples, n_samples) ]
