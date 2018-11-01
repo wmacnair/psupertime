@@ -196,7 +196,7 @@ select_genes <- function(x, params) {
 
 	} else {
 		if ( sel_genes=='all' ) {
-			sel_genes 	= rownames(x)
+			sel_genes 	= colnames(x)
 
 		} else if ( sel_genes=='TF' ) {
 			# sel_genes 	= get_tf_list()
@@ -220,6 +220,7 @@ select_genes <- function(x, params) {
 		}
 		sel_genes 			= intersect(expressed_genes, sel_genes)	
 	}
+	stopifnot( length(sel_genes)>0 )
 
 	return(sel_genes)	
 }
