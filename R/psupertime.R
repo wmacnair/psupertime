@@ -196,7 +196,11 @@ select_genes <- function(x, params) {
 
 	} else {
 		if ( sel_genes=='all' ) {
-			sel_genes 	= colnames(x)
+			if (class(x)=='SingleCellExperiment') {
+				sel_genes 	= rownames(x)
+			} else if (class(x)=='matrix') {
+				sel_genes 	= colnames(x)
+			} else { stop() }
 
 		} else if ( sel_genes=='TF' ) {
 			# sel_genes 	= get_tf_list()
