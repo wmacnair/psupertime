@@ -68,8 +68,8 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 		if (nrow(x)!=length(y)) {
 			stop('length of y must be same as number of rows in matrix x')
 		}
-		if ( is.null(colnames(x)) ) {
-			stop('column names of x must be given, as gene names')
+		if ( is.null(rownames(x)) ) {
+			stop('row names of x must be given, as gene names')
 		}
 	} else {
 		stop('x must be either a SingleCellExperiment or a matrix of counts')
