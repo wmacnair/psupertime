@@ -893,6 +893,14 @@ make_best_beta <- function(glmnet_best, best_lambdas) {
 
 #' @keywords internal
 make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, proj_dt, beta_dt, best_lambdas, best_dt, scores_dt, params) {
+	# make cuts_dt
+	which_idx 	= best_lambdas$which_idx
+	cut_idx 	= stringr::str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
+	cuts_dt 	= data.table::data.table(
+		psuper 			= c(NA, -(glmnet_best$beta[ cut_idx, which_idx ] + glmnet_best$a0[[ which_idx ]]))
+		,label_input 	= factor(levels(proj_dt$label_input), levels=levels(proj_dt$label_input))
+		)
+
 	# what do we want here?
 	# for both best, and 1se
 		# best betas
@@ -908,6 +916,7 @@ make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, proj_dt, bet
 		,x_test 		= x_test
 		,y_test 		= y_test
 		,proj_dt 		= proj_dt
+		,cuts_dt 		= cuts_dt
 		,beta_dt 		= beta_dt
 		,best_lambdas 	= best_lambdas
 		,best_dt 		= best_dt

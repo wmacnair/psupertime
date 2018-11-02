@@ -156,20 +156,12 @@ make_col_vals <- function(y_labels, palette='RdBu') {
 plot_labels_over_psupertime <- function(psuper_obj, palette='RdBu') {
 	# unpack
 	proj_dt 		= psuper_obj$proj_dt
-	glmnet_best 	= psuper_obj$glmnet_best
-	best_lambdas 	= psuper_obj$best_lambdas
+	cuts_dt 		= psuper_obj$cuts_dt
 
 	# make nice colours
 	col_vals 		= make_col_vals(proj_dt$label_input, palette)
 
-	# find cutpoints
-	which_idx 	= best_lambdas$which_idx
-	cut_idx 	= stringr::str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
-	cuts_dt 	= data.table::data.table(
-		psuper 			= c(NA, -(glmnet_best$beta[ cut_idx, which_idx ] + glmnet_best$a0[[ which_idx ]]))
-		,label_input 	= factor(levels(proj_dt$label_input), levels=levels(proj_dt$label_input))
-		)
-
+	# plot
 	g = ggplot(proj_dt) +
 		aes( x=psuper, fill=label_input) +
 		geom_density( alpha=0.5, colour=NA ) +
@@ -417,20 +409,15 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrB
 	# make nice colours
 	col_vals 		= make_col_vals(proj_new$label_input, palette)
 
-	# find cutpoints
-	glmnet_best 	= psuper_obj$glmnet_best
-	which_idx 		= psuper_obj$best_lambdas$which_idx
-	cut_idx 		= stringr::str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
-	cuts_dt 		= data.table::data.table(
-		psuper 			= -(glmnet_best$beta[ cut_idx, which_idx ] + glmnet_best$a0[[ which_idx ]])
-		)
+	# get cutpoints
+	cuts_dt 		= psuper_obj$cuts_dt
 
 	# do plot
 	g = ggplot(proj_new) +
 		aes( x=psuper, fill=label_input) +
 		geom_density( alpha=0.5, colour=NA ) +
 		scale_fill_manual( values=col_vals ) +
-		geom_vline( data=cuts_dt, aes(xintercept=psuper), colour='grey' ) +
+		geom_vline( data=cuts_dt, aes(xintercept=psuper, colour=label_input) ) +
 		scale_colour_manual( values=col_vals ) +
 		guides(
 			fill 	= guide_legend(override.aes = list(alpha=1))
