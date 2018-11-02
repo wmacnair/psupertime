@@ -163,8 +163,8 @@ plot_labels_over_psupertime <- function(psuper_obj, palette='RdBu') {
 
 	# plot
 	g = ggplot(proj_dt) +
-		aes( x=psuper, fill=label_input) +
-		geom_density( alpha=0.5, colour=NA ) +
+		aes( x=psuper, fill=label_input ) +
+		geom_density( alpha=0.5, colour='black' ) +
 		scale_fill_manual( values=col_vals ) +
 		geom_vline( data=cuts_dt, aes(xintercept=psuper, colour=label_input) ) +
 		scale_colour_manual( values=col_vals ) +
@@ -174,7 +174,7 @@ plot_labels_over_psupertime <- function(psuper_obj, palette='RdBu') {
 			) +
 		scale_x_continuous( breaks=scales::pretty_breaks() ) +
 		labs(
-			x 		= 'Pseudotime'
+			x 		= 'psupertime'
 			,y 		= 'Density'
 			,fill 	= 'Ordered labels'
 			) +
