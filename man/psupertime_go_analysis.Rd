@@ -4,12 +4,12 @@
 \alias{psupertime_go_analysis}
 \title{GO enrichment analysis for genes learned from different psupertimes}
 \usage{
-psupertime_go_analysis(psuper_obj, org_mapping = "org.Mm.eg.db")
+psupertime_go_analysis(psuper_obj, org_mapping)
 }
 \arguments{
 \item{psuper_obj}{A previously calculated psupertime object}
 
-\item{org_mapping}{Organism to use for annotations}
+\item{org_mapping}{Organism to use for annotations (e.g. 'org.Mm.eg.db', 'org.Hs.eg.db')}
 }
 \value{
 data.table containing results of GO enrichment analysis

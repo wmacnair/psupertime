@@ -5,7 +5,7 @@
 \title{Convenience function to do multiple plots}
 \usage{
 psupertime_plot_all(psuper_obj, output_dir = ".", tag = "",
-  ext = "png", org_mapping = "org.Mm.eg.db")
+  ext = "png")
 }
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}
@@ -15,8 +15,6 @@ psupertime_plot_all(psuper_obj, output_dir = ".", tag = "",
 \item{tag}{Label for all files}
 
 \item{ext}{Image format for outputs, compatible with ggsave (eps, ps, tex, pdf, jpeg, tiff, png, bmp, svg, wmf)}
-
-\item{org_mapping}{Organism to use for annotation in GO enrichment analysis}
 }
 \description{
 Convenience function to do multiple plots

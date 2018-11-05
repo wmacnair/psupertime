@@ -6,9 +6,8 @@
 #' @param output_dir Directory to save to
 #' @param tag Label for all files
 #' @param ext Image format for outputs, compatible with ggsave (eps, ps, tex, pdf, jpeg, tiff, png, bmp, svg, wmf)
-#' @param org_mapping Organism to use for annotation in GO enrichment analysis
 #' @export
-psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', ext='png', org_mapping='org.Mm.eg.db') {
+psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', ext='png') {
 	# validate model
 	cat('plotting results\n')
 	g 			= plot_train_results(psuper_obj)
@@ -30,11 +29,6 @@ psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', ext='png', o
 	g 			= plot_predictions_against_classes(psuper_obj)
 	plot_file 	= file.path(output_dir, sprintf('%s predictions over psupertime, original data.%s', tag, ext))
 	ggplot2::ggsave(plot_file, g, height=6, width=10)
-
-	# do GO term analysis if we can
-	go_dt 		= psupertime_go_analysis(psuper_obj, org_mapping=org_mapping)
-	go_file 	= file.path(output_dir, sprintf('%s go analysis.txt', tag))
-	data.table::fwrite(go_dt, file=go_file)
 }
 
 #' Plot results of training
@@ -775,10 +769,10 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 #' GO enrichment analysis for genes learned from different psupertimes
 #'
 #' @param psuper_obj A previously calculated psupertime object
-#' @param org_mapping Organism to use for annotations
+#' @param org_mapping Organism to use for annotations (e.g. 'org.Mm.eg.db', 'org.Hs.eg.db')
 #' @return data.table containing results of GO enrichment analysis
 #' @export
-psupertime_go_analysis <- function(psuper_obj, org_mapping='org.Mm.eg.db') {
+psupertime_go_analysis <- function(psuper_obj, org_mapping) {
 	# can we do this?
 	if ( !requireNamespace("topGO", quietly=TRUE) ) {
 		message('topGO not installed; not doing GO analysis')
