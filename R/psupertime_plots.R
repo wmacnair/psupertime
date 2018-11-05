@@ -429,6 +429,20 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrB
 }
 
 
+#' Check variables for confusion matrices
+#'
+#' @param plot_var Variable to plot: prop_true is proportion of true labels, prop_predict is proportion of predicted labels, N is # of cells
+#' @return list with checked plot_var, and nice label
+#' @internal
+check_conf_params <- function(plot_var) {
+	plot_var_list 	= c('prop_true', 'N', 'prop_predict')
+	plot_var 		= match.arg(plot_var, plot_var_list)
+	labels_list 	= c(prop_true='Proportion\nof labelled\nclass\n', N='# of cells', prop_predict='Proportion\nof predicted\nclass\n')
+	plot_label 		= labels_list[[plot_var]]
+
+	return( list(plot_var=plot_var, plot_label=plot_label) )
+}
+
 #' Plots confusion matrix of true labels against predicted labels.
 #'
 #' @param psuper_obj Psupertime object, output from psupertime
@@ -447,10 +461,9 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrB
 #' @importFrom ggplot2 theme_bw
 plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL, plot_var='prop_true') {
 	# decide what to plot
-	plot_var_list 	= c('prop_true', 'N', 'prop_predict')
-	plot_var 		= match.arg(plot_var, plot_var_list)
-	labels_list 	= c(prop_true='Proportion\nof labelled\nclass\n', N='# of cells', prop_predict='Proportion\nof predicted\nclass\n')
-	plot_label 		= labels_list[[plot_var]]
+	conf_params 	= check_conf_params(plot_var)
+	plot_var 		= conf_params$plot_var
+	plot_label 		= conf_params$plot_label
 
 	# unpack
 	which_idx 		= psuper_obj$best_lambdas$which_idx
@@ -592,12 +605,18 @@ double_psupertime <- function(psuper_1, psuper_2, run_names=NULL) {
 	doubles_wide 	= dcast(doubles_dt, input + cell_id + label_input ~ projection, value.var=c('psuper', 'label_psuper'))
 	for (ii in 1:n_psupers) {
 		label 	= run_names[[ii]]
-		levels(doubles_dt[[ paste0('label_psuper_', label) ]]) 	= levels(psuper_list$y)
+		doubles_wide[[ paste0('label_psuper_', label) ]] 	= fct_drop(doubles_wide[[ paste0('label_psuper_', label) ]])
+		# levels(doubles_wide[[ paste0('label_psuper_', label) ]]) 	= levels(psuper_list[[ii]]$y)
 	}
+
+	# make lists of levels
+	levels_list 		= lapply(psuper_list, function(p) levels(p$y) )
+	names(levels_list) 	= run_names
 
 	# put into list
 	double_obj 	= list(
 		run_names 		= run_names
+		,levels_list 	= levels_list
 		,doubles_dt 	= doubles_dt
 		,doubles_wide 	= doubles_wide
 		)
@@ -764,6 +783,117 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 			)
 
 	return(g)
+}
+
+#' Plots the confusion matrices of two psupertime objects against each other
+#'
+#' @param double_obj Result of applying double_psupertime to two previously calculated psupertime objects
+#' @param psuper_1, psuper_2 Two previously calculated psupertime objects
+#' @param run_names Character vector of length two, labelling the psupertime inputs
+#' @return cowplot plot_grid object, showing known and predicted labels for each dataset, and each set of predictions
+#' @export
+#' @importFrom ggplot2 aes
+#' @importFrom ggplot2 aes_string
+#' @importFrom ggplot2 expand_limits
+#' @importFrom ggplot2 geom_text
+#' @importFrom ggplot2 geom_tile
+#' @importFrom ggplot2 ggplot
+#' @importFrom ggplot2 labs
+#' @importFrom ggplot2 scale_fill_distiller
+#' @importFrom ggplot2 scale_x_discrete
+#' @importFrom ggplot2 theme_bw
+plot_double_psupertime_confusion <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run_names=NULL, plot_var='prop_true') {
+	if ( !requireNamespace("cowplot", quietly=TRUE) ) {
+		message('cowplot not installed; not plotting confusion matrix')
+		return()
+	}
+
+	# decide what to plot
+	conf_params 	= check_conf_params(plot_var)
+	plot_var 		= conf_params$plot_var
+	plot_label 		= conf_params$plot_label
+
+	# check inputs
+	if (is.null(double_obj)) {
+		if ( is.null(psuper_1) | is.null(psuper_2) ) {
+			stop('either a double_obj must be given, or psuper_1 and psuper_2 must both be given')
+			double_obj 		= double_psupertime(psuper_1, psuper_2, run_names)
+		}
+	}
+
+	# unpack
+	run_names 		= double_obj$run_names
+	label_x 		= run_names[[1]]
+	label_y 		= run_names[[2]]
+	doubles_dt 		= double_obj$doubles_dt
+
+	# set up
+	input_list 		= unique(doubles_dt$input)
+	n_inputs 		= length(input_list)
+	proj_list 		= unique(doubles_dt$projection)
+	n_projs 		= length(proj_list)
+	g_list 			= list()
+		
+	# get factor lists
+	levels_list 	= double_obj$levels_list
+
+	# do multiple plots
+	for (ii in 1:n_inputs) {
+		for (jj in 1:n_projs) {
+			# restrict to this combo of inputs/predictions
+			input_ii 		= input_list[[ii]]
+			psuper_jj 		= proj_list[[jj]]
+			counts_dt 		= doubles_dt[ input==input_ii & projection==psuper_jj, .N, by=list(label_input, label_psuper) ]
+
+			# calculate proportions
+			counts_dt[, prop_true 		:= N / sum(N), 		by=label_input ]
+			counts_dt[, prop_predict 	:= N / sum(N), 	by=label_psuper ]
+
+			# tidy up labels
+			counts_dt[, label_input 	:= forcats::fct_drop(label_input) ]
+			counts_dt[, label_input 	:= factor(label_input, levels=levels_list[[input_ii]])]
+			counts_dt[, label_psuper 	:= forcats::fct_drop(label_psuper) ]
+			counts_dt[, label_psuper 	:= factor(label_psuper, levels=levels_list[[psuper_jj]])]
+
+			# define where borders should be
+			borders_dt 		= counts_dt[as.character(label_input)==as.character(label_psuper), list(label_input, label_psuper) ]
+
+			# plot grid
+			g = ggplot(counts_dt) +
+				aes( y=label_input, x=label_psuper ) +
+				geom_tile( aes_string(fill=plot_var) ) +
+				geom_tile(data=borders_dt, aes(y=label_input, x=label_psuper), fill=NA, colour='black', size=0.5) +
+				geom_text( aes(label=N) ) +
+				scale_x_discrete( drop=FALSE ) +
+				scale_fill_distiller( palette='BuPu', direction=1, breaks=scales::pretty_breaks(), guide=FALSE ) +
+				theme_bw()
+
+			# colouring for tiles
+			if (plot_var=='N') {
+				g = g + expand_limits( fill=0 )
+			} else {
+				g = g + expand_limits( fill=c(0,1) )
+			}
+
+			# x, y labels
+			if ( ii==n_inputs ) {
+				g = g + labs( x=paste0('Predicted: ', run_names[[jj]]) )
+			} else {
+				g = g + labs( x=NULL )
+			}
+			if ( jj==1 ) {
+				g = g + labs( y=paste0('Known: ', run_names[[ii]]) )
+			} else {
+				g = g + labs( y=NULL )
+			}
+
+			g_list[[ (ii - 1)*n_inputs + jj ]] 	= g
+		}
+	}
+
+	g_grid 			= cowplot::plot_grid(plotlist=g_list, labels=NULL, nrow=n_inputs, ncol=n_projs, align='h', axis='b')
+
+	return(g_grid)
 }
 
 #' GO enrichment analysis for genes learned from different psupertimes
