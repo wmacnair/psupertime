@@ -901,8 +901,8 @@ plot_double_psupertime_confusion <- function(double_obj, psuper_1=NULL, psuper_2
 #' @param psuper_obj A previously calculated psupertime object
 #' @param org_mapping Organism to use for annotations (e.g. 'org.Mm.eg.db', 'org.Hs.eg.db')
 #' @return data.table containing results of GO enrichment analysis
-#' @export
-psupertime_go_analysis <- function(psuper_obj, org_mapping) {
+#' @internal
+psupertime_go_analysis_old <- function(psuper_obj, org_mapping) {
 	# can we do this?
 	if ( !requireNamespace("topGO", quietly=TRUE) ) {
 		message('topGO not installed; not doing GO analysis')
@@ -956,7 +956,7 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping) {
 
 		# run enrichment tests on these, extract results
 		go_weight 	= topGO::runTest(topGO_data, algorithm = "weight01", statistic = "fisher")
-		go_temp 	= data.table(topGO::GenTable(topGO_data, 
+		go_temp 	= data.table::data.table(topGO::GenTable(topGO_data, 
 			weightFisher 	= go_weight, 
 			orderBy 		= 'weightFisher', 
 			ranksOf 		= 'weightFisher', 
@@ -987,4 +987,294 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping) {
 	}
 
 	return(go_dt)
+}
+
+#' GO enrichment analysis for genes learned from different psupertimes
+#'
+#' @param psuper_obj A previously calculated psupertime object
+#' @param org_mapping Organism to use for annotations (e.g. 'org.Mm.eg.db', 'org.Hs.eg.db')
+#' @return data.table containing results of GO enrichment analysis
+#' @export
+psupertime_go_analysis <- function(psuper_obj, org_mapping, sig_cutoff=5) {
+	if ( !requireNamespace("topGO", quietly=TRUE) ) {
+		message('topGO not installed; not doing GO analysis')
+		return()
+	}
+	if ( !requireNamespace("fastcluster", quietly=TRUE) ) {
+		message('fastcluster not installed; not doing GO analysis')
+		return()
+	}
+	library('topGO')
+	library('fastcluster')
+
+	# unpack
+	glmnet_best 	= psuper_obj$glmnet_best
+	best_lambdas 	= psuper_obj$best_lambdas
+	proj_dt 		= copy(psuper_obj$proj_dt)
+	x_data 			= copy(psuper_obj$x_data)
+	beta_dt 		= psuper_obj$beta_dt
+	cuts_dt 		= psuper_obj$cuts_dt
+
+	# put cells in nice order, label projections
+	rownames(x_data) 	= sprintf('cell_%04d', 1:nrow(x_data))
+	proj_dt[, cell_id := rownames(x_data) ]
+	setorder(proj_dt, psuper)
+	proj_dt[, cell_id := factor(cell_id) ]
+
+	# do clustering on symbols
+	message('clustering genes')
+	hclust_obj 		= hclust(dist(t(x_data)), method='complete')
+
+	# extract clusters from them
+	clusters_dt 	= calc_clusters_dt(hclust_obj, x_data, proj_dt)
+	go_results 		= do_topgo_for_cluster(clusters_dt, sig_cutoff, org_mapping)
+
+	# make plot_dt
+	plot_dt 		= make_plot_dt(x_data, hclust_obj, proj_dt, clusters_dt)
+
+	# assemble outputs
+	go_list = list(
+		clusters_dt 	= clusters_dt,
+		go_results 		= go_results,
+		plot_dt 		= plot_dt,
+		cuts_dt 		= copy(psuper_obj$cuts_dt)
+		)
+
+	return(go_list)
+}
+
+#' make nice data.table of hierarchical clusters
+#'
+#' @param hclust_obj Result of hclust
+#' @param x_data Data used to calculate psuper_obj
+#' @param proj_dt Projection of cells onto psupertime
+#' @return data.table containing clusters of genes, ordered according to correlation with psupertime
+#' @internal
+calc_clusters_dt <- function(hclust_obj, x_data, proj_dt) {
+	# make thing
+	clusters_dt 	= data.table( h_clust=cutree(hclust_obj, k=10), symbol=colnames(x_data))
+	# add clustering
+	clusters_dt[, N:=.N, by=h_clust ]
+
+	# order by correlation with psupertime
+	temp_dt 			= data.table(melt(x_data, varnames=c('cell_id', 'symbol')))
+	temp_dt 			= clusters_dt[ temp_dt, on='symbol' ]
+	means_dt 			= temp_dt[, list(mean=mean(value)), by=list(cell_id, h_clust) ]
+	means_dt 			= proj_dt[ means_dt, on='cell_id' ]
+	corrs_dt 			= means_dt[, list( cor=cor(mean, psuper) ), by=h_clust]
+	setorder(corrs_dt, cor)
+	corrs_dt[, clust := 1:.N ]
+	corrs_dt[, clust := factor(clust)]
+	
+	# add clusters ordered by size back in
+	clusters_dt			= corrs_dt[ clusters_dt, on='h_clust' ]
+	clusters_dt[, clust_label := factor(sprintf('%02d (%d genes)', clust, N)) ]
+	clusters_dt[, h_clust := NULL ]
+	setorder(clusters_dt, clust, symbol)
+
+	return(clusters_dt)
+}
+
+#' Calculate GO enrichment for each cluster vs all other genes
+#'
+#' @param clusters_dt 
+#' @param sig_cutoff How many genes should be in the cluster for us to consider a GO term?
+#' @return data.table with GO term results
+#' @internal
+do_topgo_for_cluster <- function(clusters_dt, sig_cutoff, org_mapping) {
+	# set up
+	all_clusters 	= unique(clusters_dt[N>=sig_cutoff]$clust)
+	go_results 		= data.table()
+
+	# loop through clusters
+	message(sprintf('calculating GO enrichments for %d clusters:', length(all_clusters)))
+	for (c in all_clusters) {
+		message('.', appendLF=FALSE)
+		gene_list 			= factor( as.integer(clusters_dt$clust == c) )
+		names(gene_list) 	= clusters_dt$symbol
+
+		# make topGO object
+		suppressMessages({
+			topGO_data 	= new("topGOdata", 
+			description 		= c, 
+			allGenes 			= gene_list, 
+			# geneSelectionFun 	= function(x) {x==TRUE},
+			annot 				= annFUN.org, 
+			mapping 			= org_mapping, 
+			ontology 			= 'BP',
+			ID 					= 'symbol'
+			)
+		})
+		# run enrichment tests on these, extract results
+		suppressMessages({go_weight 	= runTest(topGO_data, algorithm = "weight", statistic = "fisher")})
+		n_terms 		= length(go_weight@score)
+		temp_results 	= data.table(GenTable(topGO_data, 
+			weightFisher 	= go_weight, 
+			orderBy 		= 'weightFisher', 
+			ranksOf 		= 'weightFisher', 
+			topNodes 		= n_terms
+			))
+		temp_results[ , cluster := c ]
+
+		# store
+		go_results 	= rbind(go_results, temp_results)
+	}
+	message('')
+
+	# tidy up
+	setnames(go_results, 'weightFisher', 'tmp')
+	go_results[, weightFisher := as.numeric(tmp) ]
+	go_results[ tmp == '< 1e-30', weightFisher := 9e-31 ]
+	go_results[ , tmp := NULL ]
+	go_results[ , cluster := factor(cluster, levels=all_clusters) ]
+
+	return(go_results)
+}
+
+#' Internal function
+#'
+#' @param x_data 
+#' @param hclust_obj 
+#' @param proj_dt 
+#' @param clusters_dt 
+#' @return data.table for plotting
+#' @internal
+make_plot_dt <- function(x_data, hclust_obj, proj_dt, clusters_dt) {
+	# plot
+	plot_dt 			= data.table(melt(x_data, varnames=c('cell_id', 'symbol')))
+
+	# nice ordering
+	symbol_order 		= colnames(x_data)[hclust_obj$order]
+	plot_dt[, symbol 	:= factor(symbol, levels=symbol_order)]
+	plot_dt[, cell_id 	:= factor(cell_id, levels=proj_dt$cell_id)]
+
+	# put this into plotting 
+	plot_dt 			= clusters_dt[ plot_dt, on='symbol' ]
+	plot_dt 			= proj_dt[ plot_dt, on='cell_id' ]
+
+	return(plot_dt)
+}
+
+#' Plots the significant GO terms for each cluster
+#'
+#' @param go_results Output from GO analysis
+#' @param sig_cutoff What is the minimum number of annotated genes to display a GO term?
+#' @param p_cutoff What is the maximum p-value to display a GO term?
+#' @return bar plot
+#' @export
+#' @importFrom ggplot2 ggplot
+#' @importFrom ggplot2 aes
+#' @importFrom ggplot2 geom_col
+#' @importFrom ggplot2 facet_grid
+#' @importFrom ggplot2 coord_flip
+#' @importFrom ggplot2 scale_y_continuous
+#' @importFrom ggplot2 labs
+#' @importFrom ggplot2 theme_bw
+plot_go_results <- function(go_list, sig_cutoff=5, p_cutoff=0.1) {
+	# unpack
+	go_results 	= go_list$go_results
+
+	# set up
+	plot_dt 	= go_results[ Significant>=sig_cutoff & weightFisher<p_cutoff ]
+	data.table::setorder(plot_dt, cluster, -weightFisher)
+	plot_dt[, N := .N, by=Term ]
+	plot_dt[	  , term_n := Term ]
+	plot_dt[ N > 1, term_n := paste0(Term, '_', 1:.N), by=Term ]
+	plot_dt[, term_n := factor(term_n, levels=plot_dt$term_n) ]
+
+	# plot
+	g = ggplot(plot_dt) +
+		aes( x=term_n, y=-log10(weightFisher) ) +
+		geom_col() +
+		scale_y_continuous( breaks=scales::pretty_breaks() ) +
+		facet_grid( cluster ~ ., scales='free_y', space='free_y') +
+		coord_flip() +
+		labs(
+			x 	= NULL
+			,y 	= 'log10( p-value )'
+			) +
+		theme_bw()
+	return(g)
+}
+
+#' Plot heatmap of gene clusters
+#'
+#' @param go_list Output from GO analysis
+#' @return ggplot object
+#' @export
+#' @importFrom ggplot2 ggplot
+#' @importFrom ggplot2 aes
+#' @importFrom ggplot2 geom_tile
+#' @importFrom ggplot2 scale_fill_distiller
+#' @importFrom ggplot2 facet_grid
+#' @importFrom ggplot2 theme
+#' @importFrom ggplot2 element_blank
+#' @importFrom ggplot2 theme_bw
+#' @importFrom ggplot2 labs
+plot_heatmap_of_gene_clusters <- function(go_list) {
+	# unpack
+	plot_dt 	= go_list$plot_dt
+
+	# plot
+	g = ggplot(plot_dt) +
+		aes( x=cell_id, y=symbol, fill=value ) +
+		geom_tile() +
+		scale_fill_distiller( palette='RdBu', limits=c(-3, 3) ) +
+		facet_grid( clust_label ~ ., scale='free_y', space='free_y' ) +
+		theme_bw() +
+		theme(
+			axis.text 	 = element_blank()
+			,axis.ticks  = element_blank()
+			) +
+		labs(
+			x 		= 'Cell'
+			,y 		= 'Symbol'
+			,fill 	= 'z-scored gene\nexpression'
+			)
+	return(g)
+}
+
+#' Plot heatmap of gene clusters
+#'
+#' @param go_list Output from GO analysis
+#' @return ggplot object
+#' @export
+#' @importFrom ggplot2 ggplot
+#' @importFrom ggplot2 aes
+#' @importFrom ggplot2 geom_vline
+#' @importFrom ggplot2 scale_colour_manual
+#' @importFrom ggplot2 geom_smooth
+#' @importFrom ggplot2 facet_grid
+#' @importFrom ggplot2 theme_bw
+#' @importFrom ggplot2 theme
+#' @importFrom ggplot2 element_blank
+#' @importFrom ggplot2 labs
+plot_profiles_of_gene_clusters <- function(go_list, palette='RdBu') {
+	# unpack
+	plot_dt 	= go_list$plot_dt
+	cuts_dt 	= go_list$cuts_dt
+
+	# set up what to plot
+	means_dt 	= plot_dt[, list(value=mean(value)), by=list(psuper, clust_label)]
+
+	# make nice colours
+	col_vals 	= make_col_vals(cuts_dt$label_input, palette)
+
+	# plot
+	g = ggplot(means_dt) +
+		aes( x=psuper, y=value ) +
+		geom_vline(data=cuts_dt, aes(xintercept=psuper, colour=label_input)) +
+		scale_colour_manual( values=col_vals ) +
+		geom_smooth( colour='black', span=0.2, method='loess' ) +
+		facet_grid( clust_label ~ ., scales='free_y' ) +
+		theme_bw() +
+		theme(
+			axis.text 	= element_blank()
+			) +
+		labs(
+			x 		= 'psupertime'
+			,y 		= 'z-scored gene expression'
+			,colour = 'Condition'
+			)
+	return(g)
 }

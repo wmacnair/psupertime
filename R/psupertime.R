@@ -246,7 +246,8 @@ select_genes <- function(x, params) {
 calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	message('identifying highly variable genes')
 	assay_type 		= 'logcounts'
-	var_fit 		= scran::trendVar(sce, assay.type=assay_type, method="loess", use.spikes=FALSE, span=0.1)
+	# var_fit 		= scran::trendVar(sce, assay.type=assay_type, method="loess", use.spikes=FALSE, span=0.1)
+	var_fit 		= scran::trendVar(assay(sce, assay_type), method="loess", loess.args=list(span=0.1))
 	var_out 		= scran::decomposeVar(sce, var_fit, assay.type=assay_type)
 
 	# plot trends identified
