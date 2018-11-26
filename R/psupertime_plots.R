@@ -1191,7 +1191,7 @@ plot_go_results <- function(go_list, sig_cutoff=5, p_cutoff=0.1) {
 		coord_flip() +
 		labs(
 			x 	= NULL
-			,y 	= 'log10( p-value )'
+			,y 	= '-log10( p-value )'
 			) +
 		theme_bw()
 	return(g)
