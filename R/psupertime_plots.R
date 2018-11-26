@@ -234,7 +234,7 @@ plot_identified_gene_coefficients <- function(psuper_obj, n=20, abs_cutoff=0.05)
 #' @importFrom ggplot2 scale_y_continuous
 #' @importFrom ggplot2 theme
 #' @importFrom ggplot2 theme_bw
-plot_identified_genes_over_psupertime <- function(psuper_obj, n_to_plot=25, palette='RdBu') {
+plot_identified_genes_over_psupertime <- function(psuper_obj, n_to_plot=20, palette='RdBu') {
 	# unpack
 	proj_dt 	= psuper_obj$proj_dt
 	beta_dt 	= psuper_obj$beta_dt
