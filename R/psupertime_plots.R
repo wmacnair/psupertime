@@ -5,16 +5,17 @@
 #' @param psuper_obj Psupertime object, output from psupertime
 #' @param output_dir Directory to save to
 #' @param tag Label for all files
+#' @param label_name Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')
 #' @param ext Image format for outputs, compatible with ggsave (eps, ps, tex, pdf, jpeg, tiff, png, bmp, svg, wmf)
 #' @export
-psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', ext='png') {
+psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', label_name='Ordered labels', ext='png') {
 	# validate model
 	cat('plotting results\n')
 	g 			= plot_train_results(psuper_obj)
 	plot_file 	= file.path(output_dir, sprintf('%s training results.%s', tag, ext))
 	ggplot2::ggsave(plot_file, g, height=6, width=6)
 
-	g 			= plot_labels_over_psupertime(psuper_obj)
+	g 			= plot_labels_over_psupertime(psuper_obj, label_name)
 	plot_file 	= file.path(output_dir, sprintf('%s labels over psupertime.%s', tag, ext))
 	ggplot2::ggsave(plot_file, g, height=6, width=12)
 
@@ -135,6 +136,8 @@ make_col_vals <- function(y_labels, palette='RdBu') {
 #' Plots labels over their projected values on psupertime.
 #'
 #' @param psuper_obj Psupertime object, output from psupertime
+#' @param label_name Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')
+#' @param palette RColorBrewer palette to use
 #' @return ggplot2 object
 #' @export
 #' @importFrom ggplot2 aes
@@ -147,7 +150,7 @@ make_col_vals <- function(y_labels, palette='RdBu') {
 #' @importFrom ggplot2 scale_colour_manual
 #' @importFrom ggplot2 scale_fill_manual
 #' @importFrom ggplot2 scale_x_continuous
-plot_labels_over_psupertime <- function(psuper_obj, palette='RdBu') {
+plot_labels_over_psupertime <- function(psuper_obj, label_name='Ordered labels', palette='RdBu') {
 	# unpack
 	proj_dt 		= psuper_obj$proj_dt
 	cuts_dt 		= psuper_obj$cuts_dt
@@ -170,7 +173,7 @@ plot_labels_over_psupertime <- function(psuper_obj, palette='RdBu') {
 		labs(
 			x 		= 'psupertime'
 			,y 		= 'Density'
-			,fill 	= 'Ordered labels'
+			,fill 	= label_name
 			) +
 		theme_bw()
 
@@ -219,6 +222,9 @@ plot_identified_gene_coefficients <- function(psuper_obj, n=20, abs_cutoff=0.05)
 #' Plots profiles of identified genes against psupertime.
 #'
 #' @param psuper_obj Psupertime object, output from psupertime
+#' @param label_name Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')
+#' @param n_to_plot Maximum number of genes to plot (default 20)
+#' @param palette RColorBrewer palette to use
 #' @return ggplot2 object
 #' @export
 #' @importFrom ggplot2 aes
@@ -234,7 +240,7 @@ plot_identified_gene_coefficients <- function(psuper_obj, n=20, abs_cutoff=0.05)
 #' @importFrom ggplot2 scale_y_continuous
 #' @importFrom ggplot2 theme
 #' @importFrom ggplot2 theme_bw
-plot_identified_genes_over_psupertime <- function(psuper_obj, n_to_plot=20, palette='RdBu') {
+plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordered labels', n_to_plot=20, palette='RdBu') {
 	# unpack
 	proj_dt 	= psuper_obj$proj_dt
 	beta_dt 	= psuper_obj$beta_dt
@@ -271,7 +277,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, n_to_plot=20, pale
 		labs(
 			x 		= 'Pseudotime'
 			,y 		= 'z-scored log2 expression'
-			,colour = 'Condition'
+			,colour = label_name
 			)
 	return(g)
 }
@@ -279,6 +285,9 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, n_to_plot=20, pale
 #' Plots profiles of hand-selected genes against psupertime.
 #'
 #' @param psuper_obj Psupertime object, output from psupertime
+#' @param extra_genes 
+#' @param label_name Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')
+#' @param palette RColorBrewer palette to use
 #' @return ggplot2 object
 #' @export
 #' @importFrom ggplot2 aes
@@ -294,7 +303,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, n_to_plot=20, pale
 #' @importFrom ggplot2 scale_y_continuous
 #' @importFrom ggplot2 theme
 #' @importFrom ggplot2 theme_bw
-plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, palette='RdBu') {
+plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_name='Ordered labels', palette='RdBu') {
 	stop('not implemented yet')
 	# get smoothed data across all genes
 	x_all 		= make_x_data(sce, rownames(sce), y_labels, params)
@@ -332,7 +341,7 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, palett
 		labs(
 			x 		= 'Pseudotime'
 			,y 		= 'z-scored log2 expression'
-			,colour = 'Condition'
+			,colour = label_name
 			# ,shape 	= 'Test / train data'
 			)
 	return(g)
@@ -387,6 +396,7 @@ project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL) {
 #'
 #' @param psuper_obj Psupertime object, output from psupertime
 #' @param new_x,new_y Optional data to predict with psuper_obj
+#' @param palette RColorBrewer palette to use
 #' @return ggplot2 object
 #' @export
 #' @importFrom ggplot2 ggplot
@@ -448,6 +458,7 @@ check_conf_params <- function(plot_var) {
 #' @param psuper_obj Psupertime object, output from psupertime
 #' @param new_x,new_y Optional data to predict with psuper_obj
 #' @param plot_var Variable to plot: prop_true is proportion of true labels, prop_predict is proportion of predicted labels, N is # of cells
+#' @param palette RColorBrewer palette to use
 #' @return ggplot2 object
 #' @export
 #' @importFrom ggplot2 aes
@@ -459,7 +470,7 @@ check_conf_params <- function(plot_var) {
 #' @importFrom ggplot2 scale_fill_distiller
 #' @importFrom ggplot2 scale_x_discrete
 #' @importFrom ggplot2 theme_bw
-plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL, plot_var='prop_true') {
+plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL, plot_var='prop_true', palette='BuPu') {
 	# decide what to plot
 	conf_params 	= check_conf_params(plot_var)
 	plot_var 		= conf_params$plot_var
@@ -526,7 +537,7 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 		geom_tile(data=borders_dt, aes(y=true, x=predicted), fill=NA, colour='black', size=0.5) +
 		geom_text( aes(label=N) ) +
 		scale_x_discrete( drop=FALSE ) +
-		scale_fill_distiller( palette='BuPu', direction=1, breaks=scales::pretty_breaks() )
+		scale_fill_distiller( palette=palette, direction=1, breaks=scales::pretty_breaks() )
 	if (plot_var=='N') {
 		g = g + expand_limits( fill=0 )
 	} else {
@@ -790,6 +801,7 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 #' @param double_obj Result of applying double_psupertime to two previously calculated psupertime objects
 #' @param psuper_1, psuper_2 Two previously calculated psupertime objects
 #' @param run_names Character vector of length two, labelling the psupertime inputs
+#' @param palette RColorBrewer palette to use
 #' @return cowplot plot_grid object, showing known and predicted labels for each dataset, and each set of predictions
 #' @export
 #' @importFrom ggplot2 aes
@@ -802,7 +814,7 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 #' @importFrom ggplot2 scale_fill_distiller
 #' @importFrom ggplot2 scale_x_discrete
 #' @importFrom ggplot2 theme_bw
-plot_double_psupertime_confusion <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run_names=NULL, plot_var='prop_true') {
+plot_double_psupertime_confusion <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run_names=NULL, plot_var='prop_true', palette='BuPu') {
 	if ( !requireNamespace("cowplot", quietly=TRUE) ) {
 		message('cowplot not installed; not plotting confusion matrix')
 		return()
@@ -865,7 +877,7 @@ plot_double_psupertime_confusion <- function(double_obj, psuper_1=NULL, psuper_2
 				geom_tile(data=borders_dt, aes(y=label_input, x=label_psuper), fill=NA, colour='black', size=0.5) +
 				geom_text( aes(label=N) ) +
 				scale_x_discrete( drop=FALSE ) +
-				scale_fill_distiller( palette='BuPu', direction=1, breaks=scales::pretty_breaks(), guide=FALSE ) +
+				scale_fill_distiller( palette=palette, direction=1, breaks=scales::pretty_breaks(), guide=FALSE ) +
 				theme_bw()
 
 			# colouring for tiles
@@ -1237,6 +1249,8 @@ plot_heatmap_of_gene_clusters <- function(go_list) {
 #' Plot heatmap of gene clusters
 #'
 #' @param go_list Output from GO analysis
+#' @param label_name Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')
+#' @param palette RColorBrewer palette to use
 #' @return ggplot object
 #' @export
 #' @importFrom ggplot2 ggplot
@@ -1249,7 +1263,7 @@ plot_heatmap_of_gene_clusters <- function(go_list) {
 #' @importFrom ggplot2 theme
 #' @importFrom ggplot2 element_blank
 #' @importFrom ggplot2 labs
-plot_profiles_of_gene_clusters <- function(go_list, palette='RdBu') {
+plot_profiles_of_gene_clusters <- function(go_list, label_name='Ordered labels', palette='RdBu') {
 	# unpack
 	plot_dt 	= go_list$plot_dt
 	cuts_dt 	= go_list$cuts_dt
@@ -1274,7 +1288,7 @@ plot_profiles_of_gene_clusters <- function(go_list, palette='RdBu') {
 		labs(
 			x 		= 'psupertime'
 			,y 		= 'z-scored gene expression'
-			,colour = 'Condition'
+			,colour = label_name
 			)
 	return(g)
 }
