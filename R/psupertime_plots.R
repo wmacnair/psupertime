@@ -23,7 +23,7 @@ psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', label_name='
 	plot_file 	= file.path(output_dir, sprintf('%s identified genes.%s', tag, ext))
 	ggplot2::ggsave(plot_file, g, height=6, width=8)
 
-	g 			= plot_identified_genes_over_psupertime(psuper_obj)
+	g 			= plot_identified_genes_over_psupertime(psuper_obj, label_name)
 	plot_file 	= file.path(output_dir, sprintf('%s identified genes over psupertime.%s', tag, ext))
 	ggplot2::ggsave(plot_file, g, height=8, width=12)
 
