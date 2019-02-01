@@ -275,7 +275,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 			axis.text.x = element_blank()
 			) +
 		labs(
-			x 		= 'Pseudotime'
+			x 		= 'psupertime'
 			,y 		= 'z-scored log2 expression'
 			,colour = label_name
 			)
@@ -339,7 +339,7 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_
 			axis.text.x = element_blank()
 			) +
 		labs(
-			x 		= 'Pseudotime'
+			x 		= 'psupertime'
 			,y 		= 'z-scored log2 expression'
 			,colour = label_name
 			# ,shape 	= 'Test / train data'
@@ -429,7 +429,7 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrB
 			) +
 		scale_x_continuous( breaks=scales::pretty_breaks() ) +
 		labs(
-			x 		= 'Pseudotime'
+			x 		= 'psupertime'
 			,y 		= 'Density'
 			,fill 	= 'Ordered labels'
 			) +
