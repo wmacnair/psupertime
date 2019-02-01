@@ -85,13 +85,19 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 
 	# check selection of genes is valid
 	sel_genes_list 	= c('hvg', 'all', 'TF', 'list')
+	span_default 	= 0.1
 	if (!is.character(sel_genes)) {
-		if ( !is.list(sel_genes) || !setequal(names(sel_genes), c('hvg_cutoff', 'bio_cutoff')) ) {
-			err_message 	= paste0('sel_genes must be one of ', paste(sel_genes_list, collapse=', '), ', or a list with the following named numeric elements: hvg_cutoff, bio_cutoff')
+		if ( !is.list(sel_genes) || !all(c('hvg_cutoff', 'bio_cutoff') %in% names(sel_genes)) ) {
+			err_message 	= paste0('sel_genes must be one of ', paste(sel_genes_list, collapse=', '), ', or a list containing the following named numeric elements: hvg_cutoff, bio_cutoff')
 			stop(err_message)
 		}
 		hvg_cutoff 	= sel_genes$hvg_cutoff
 		bio_cutoff 	= sel_genes$bio_cutoff
+		if (is.null(sel_genes$span)) {
+			span 		= span_default
+		} else {
+			span 		= sel_genes$span
+		}
 		sel_genes 	= 'hvg'
 	} else {
 		if ( !(sel_genes %in% sel_genes_list) ) {
@@ -99,15 +105,17 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 			stop(err_message)
 		} else if (sel_genes=='list') {
 			if (is.null(params$gene_list) || !is.character(params$gene_list)) {
-				stop("to use 'list' as sel_genes value, you must also give a character vectror as gene_list")
+				stop("to use 'list' as sel_genes value, you must also give a character vector as gene_list")
 			}
 		} else if (sel_genes=='hvg') {
 			message('using default parameters to identify highly variable genes')
 			hvg_cutoff 		= 0.1
 			bio_cutoff		= 0.5
+			span 			= span_default
 		} else {
 			hvg_cutoff 		= NULL
 			bio_cutoff		= NULL
+			span 			= NULL
 		}
 	}
 
@@ -158,6 +166,7 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 		sel_genes 		= sel_genes
 		,hvg_cutoff 	= hvg_cutoff
 		,bio_cutoff 	= bio_cutoff
+		,span 			= span
 		,smooth 		= smooth
 		,scale 			= scale
 		,min_expression = min_expression
@@ -247,7 +256,8 @@ calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	message('identifying highly variable genes')
 	assay_type 		= 'logcounts'
 	# var_fit 		= scran::trendVar(sce, assay.type=assay_type, method="loess", use.spikes=FALSE, span=0.1)
-	var_fit 		= scran::trendVar(assay(sce, assay_type), method="loess", loess.args=list(span=0.1))
+	span 			= ifelse(is.null(params$span), 0.1, params$span)
+	var_fit 		= scran::trendVar(assay(sce, assay_type), method="loess", loess.args=list(span=span))
 	var_out 		= scran::decomposeVar(sce, var_fit, assay.type=assay_type)
 
 	# plot trends identified
