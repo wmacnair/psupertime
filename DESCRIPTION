@@ -17,7 +17,11 @@ Imports: data.table,
     stringr,
     grDevices,
     scales
-Suggests: topGO,
+Suggests: 
+    topGO,
     cowplot,
-    fastcluster
+    fastcluster,
+    knitr,
+    rmarkdown
 RoxygenNote: 6.1.0
+VignetteBuilder: knitr
