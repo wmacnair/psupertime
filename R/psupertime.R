@@ -258,7 +258,7 @@ calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	assay_type 		= 'logcounts'
 	# var_fit 		= scran::trendVar(sce, assay.type=assay_type, method="loess", use.spikes=FALSE, span=0.1)
 	span 			= ifelse(is.null(params$span), 0.1, params$span)
-	var_fit 		= scran::trendVar(assay(sce, assay_type), method="loess", loess.args=list(span=span))
+	var_fit 		= scran::trendVar(SummarizedExperiment::assay(sce, assay_type), method="loess", loess.args=list(span=span))
 	var_out 		= scran::decomposeVar(sce, var_fit, assay.type=assay_type)
 
 	# plot trends identified
