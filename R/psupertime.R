@@ -104,7 +104,7 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 			err_message 	= paste0('invalid value for sel_genes; please use one of ', paste(sel_genes_list, collapse=', '))
 			stop(err_message)
 		} else if (sel_genes=='list') {
-			if (is.null(params$gene_list) || !is.character(params$gene_list)) {
+			if (is.null(gene_list) || !is.character(gene_list)) {
 				stop("to use 'list' as sel_genes value, you must also give a character vector as gene_list")
 			}
 		} else if (sel_genes=='hvg') {
@@ -167,6 +167,7 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 		,hvg_cutoff 	= hvg_cutoff
 		,bio_cutoff 	= bio_cutoff
 		,span 			= span
+		,gene_list 		= gene_list
 		,smooth 		= smooth
 		,scale 			= scale
 		,min_expression = min_expression
