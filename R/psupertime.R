@@ -78,6 +78,7 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 		y 	= factor(y)
 	}
 	if (!is.null(y_labels)) {
+		stop('y_labels not yet implemented')
 		if ( !all(y_labels %in% levels(y)) ) {
 			stop('y_labels must be a subset of the labels for y')
 		}
