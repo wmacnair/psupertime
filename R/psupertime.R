@@ -107,6 +107,9 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 			if (is.null(gene_list) || !is.character(gene_list)) {
 				stop("to use 'list' as sel_genes value, you must also give a character vector as gene_list")
 			}
+			hvg_cutoff 		= NULL
+			bio_cutoff		= NULL
+			span 			= NULL
 		} else if (sel_genes=='hvg') {
 			message('using default parameters to identify highly variable genes')
 			hvg_cutoff 		= 0.1
@@ -411,6 +414,8 @@ make_x_data <- function(x, sel_genes, params) {
 	old_names 			= colnames(x_data)
 	new_names 			= stringr::str_replace_all(old_names, '-', '.')
 	colnames(x_data) 	= new_names
+
+	message(sprintf('    processed data is %d cells * %d genes', nrow(x_data), ncol(x_data)))
 
 	return(x_data)
 }
