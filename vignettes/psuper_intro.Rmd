@@ -1,0 +1,192 @@
+---
+title: "Brief introduction to psupertime"
+author: "Will Macnair"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: yes
+vignette: >
+  %\VignetteIndexEntry{Brief introduction to psupertime}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+# library('psupertime')
+psuper_dir  = 'Z:/Documents/Code/psupertime'
+devtools::load_all(psuper_dir)
+```
+
+# `psupertime` overview
+
+`psupertime` is an R package for analysing single cell RNA-seq data where groups of the cells have labels with a known or expected ordering (for example, samples from a time series experiment *day1*, *day2*, ..., *day5*). It uses *ordinal logistic regression* to identify a set of genes which recapitulate the group-level ordering for individual cells.
+
+In this short vignette, we show a simple example of psupertime, corresponding to the data in Figure 2 of the biorxiv manuscript. As single cell RNA-seq datasets are typically large, we have only included one, restricted dataset in the core psupertime package. To allow replication of all the examples in the psupertime paper, we have also made a psupertime data package, [here](github.com/wmacnair/psupertime-data).
+
+
+## Basic usage
+
+`psupertime` requires two inputs:
+
+- `x`, log pseudocount data, either as a `SingleCellExperiment` object or a matrix with rows as cells and columns as genes; and
+- `y`, a factor with labels for each cell, where the ordering of the factor levels is the required ordering.
+
+We demonstrate `psupertime` on a small example dataset, comprising pancreas cells taken from donors of varying ages. The most straightforward way to run `psupertime` is very simple:
+```{r}
+# load the data
+data(acinar_hvg_sce)
+
+# run psupertime
+x           = acinar_hvg_sce
+y           = acinar_hvg_sce$donor_age
+psuper_obj  = psupertime(acinar_hvg_sce, y, sel_genes='all')
+```
+
+This runs `psupertime` using all genes, by specifying `sel_genes='all'`. The default setting is to restrict to only highly varying genes (HVGs), as described in `scran`. You can then call `psupertime` like this:
+
+```
+## not run
+# psuper_obj  = psupertime(x, y)
+```
+
+## `psupertime` outputs
+
+Once you have run `psupertime`, you can produce a range of plots to check the outputs, for example:
+
+- a diagnostic plot of the `psupertime` fitting, to check for accuracy, and the level of regularization selected;
+- the distribution of the labels along the learned `psupertime`;
+- the genes with the largest absolute coefficients learned by `psupertime`; and
+- the expressions for individual cells for these genes.
+
+
+### Model diagnostics
+
+<!-- ```{r, fig.show='hold', fig.height=6, fig.width=7, fig.cap="Diagnostic plot for checking that training worked well"} -->
+```{r, fig.show='hold', fig.height=6, fig.width=7, fig.cap="Diagnostic plot for checking that training worked well"}
+g       = plot_train_results(psuper_obj)
+(g)
+```
+
+The x-axis shows the degree of regularization, $\lambda$ (i.e. how strongly the model tries to set coefficients to zero). The optimal value of $\lambda$ is the one which gives the best mean performance over the training data, based on one of two possible measures of performance. The first row shows accuracy, namely for what proportion of cells did `psupertime` predict the correct label. The second row is cross-entropy, which quantifies how confidently the `psupertime` classifier predicts the correct label (so predicting the correct label with probability $p=0.9$ results in a lower cross-entropy than $p=0.5$). Accuracy is a 'lumpy' measurement of performance (something is either correct or not), whereas cross-entropy is continuous; this means that selecting $\lambda$ on the basis of cross-entropy results in a less noisy $\lambda$ value.
+
+The solid vertical grey line shows the value of $\lambda$ resulting in the best performance. The dashed vertical grey line shows the largest value of $\lambda$ with performance within one standard error of this. By default `psupertime` selects this value, to increase sparsity at a minimal cost to performance.
+
+
+### `psupertime` ordering of cells
+
+Like other pseudotime methods, one output from `psupertime` is an ordering for the individual cells. In this case of `psupertime`, this ordering should broadly follow the group-level labels given as inputs. 
+
+Interesting things you might observe:
+- Individual cells may have earlier or later values than others with the same label, possibly suggesting interesting subpopulations within a group label.
+- The thresholds learned by `psupertime` indicate how easy it is to distinguish between the different labels - where thresholds are close together, these labels are hard to separate, and where they are distant this task is easier.
+
+```{r, fig.show='hold', fig.height=4, fig.width=7, fig.cap="Labels over `psupertime`"}
+g       = plot_labels_over_psupertime(psuper_obj, label_name='Donor age')
+(g)
+```
+
+The x-axis shows the one-dimensional projection learned by `psupertime`: each cell has a value between 0 and 1, with earlier labels being closer to 0, and later labels closer to 1. The different colours are the labels learned by `psupertime`, with the y-axis showing their densities over the pseudotime. The vertical lines indicate the 50:50 point between each pair of successive labels. For example, the first vertical line (blue, x=$\sim$-6) shows the value of `psupertime` at which `psupertime` predicts the labels 1 year vs {5,6,21,22,38,44,54} years with equal probability.
+
+### Genes identified by `psupertime`
+
+`psupertime` identifies a small set of genes which place the individual cells approximately in the order of the group-level labels. This can be the most interesting output from `psupertime`.
+
+```{r, fig.show='hold', fig.height=3, fig.width=6}
+g       = plot_identified_gene_coefficients(psuper_obj)
+(g)
+```
+
+This plot shows the 20 genes with the largest absolute coefficient values (subject to the absolute value being %>0.05$). Genes with positive coefficients will have expression positively correlated with the group-level labels, and vice versa for negative coefficients.
+
+```{r, fig.show='hold', fig.height=6, fig.width=8}
+g       = plot_identified_genes_over_psupertime(psuper_obj, label_name='Donor age')
+(g)
+```
+
+Another way of examining these genes is to plot their expression values along the learned `psupertime`. This plot shows the same set of genes, with the (z-scored log) expression values for all individual cells. This can show different profiles of expression, e.g. initially on, then switched off (*ITM2A*), monotonically changing (*CLU*).
+
+Such gene plots can also potentially identify branching, for example where expression of a given gene is initially unimodal, but later becomes bimodal.
+
+### `psupertime` as a classifier
+
+`psupertime` is a classifier, in the sense that once trained, it predicts a label for each cell given as input. Comparing the predicted classes of cells against their known classes can identify interesting subpopulations of cells. For example, in this plot the label donor age 6 (third row from the bottom) has predicted donor age 5 for two thirds of its cells, and donor age 21 for one third of its cells. [For this example dataset, this analysis doesn't seem super interesting, but there are others where it is useful!]
+
+```{r, fig.show='hold', fig.height=4, fig.width=5}
+g       = plot_predictions_against_classes(psuper_obj)
+(g)
+```
+
+In this plot, the x-axis shows the labels used to train `psupertime`; the y-axis shows the labels of the data used as input for this plot (which in this case are the same as the predicted labels). The value in each box shows the number of cells with the known label for the row, which were predicted to have the column label. The colour corresponds to the proportions of the known label across the different possible predictions; within each row, the colours 'add up to 1'.
+
+`psupertime` can also be applied to data with unknown or different labels. In that case, the x-axis would remain the same, with the labels used to train the `psupertime`, but the y-axis would be different. Using it on the data used for training means we can check how accurate its labelling is (when `psupertime` is accurate, all the values should be on the diagonal), and in particular check whether it is less accurate for some labels.
+
+## Alternative ways to run `psupertime`
+
+Above, we ran `psupertime` with the default settings. Here are some obvious settings you could consider changing:
+
+**Selection of genes** The default setting for `psupertime` is to restrict the analysis to highly varying genes, using the method described in `scater` (see [here](https://f1000research.com/articles/5-2122/v2)). Here are some alternative methods for selecting genes for running `psupertime`.
+
+```
+# Option 1 (default): Select highly variable genes, using default settings for `scater`.
+psuper_hvg      = psupertime(acinar_hvg_sce, y)
+psuper_hvg      = psupertime(acinar_hvg_sce, y, sel_genes='hvg')
+
+# Option 2: Select highly variable genes, using your own settings.
+psuper_hvg_custom1  = psupertime(acinar_hvg_sce, y, sel_genes=list(hvg_cutoff=0.1, bio_cutoff=0.5))
+psuper_hvg_custom2  = psupertime(acinar_hvg_sce, y, sel_genes=list(hvg_cutoff=0.1, bio_cutoff=0.5, span=0.1))
+
+# Option 3: Use all genes
+psuper_all      = psupertime(acinar_hvg_sce, y, sel_genes='all')
+
+# Option 4: Use transcription factors
+psuper_tf       = psupertime(acinar_hvg_sce, y, sel_genes='TF')
+
+# Option 5: Use user-defined list of genes
+psuper_sel      = psupertime(
+  acinar_hvg_sce, y, 
+  sel_genes='list', 
+  gene_list=c('ITM2A', 'CLU', 'HSPH1', 'ADH1C', 'AMY2B')
+  )
+```
+
+**Performance characteristics** By default, `psupertime` uses the largest regularization which results in performance within one standard error of the best performance (`penalization='1se'`). You can choose to have the maximum performance (typically resulting in a larger set of non-zero genes), by using `penalization='best'`. You can also change the measure of performance used.
+
+```{r}
+psuper_1se  = psupertime(acinar_hvg_sce, y, sel_genes='all', penalization='1se')
+psuper_best = psupertime(acinar_hvg_sce, y, sel_genes='all', penalization='best')
+psuper_acc  = psupertime(acinar_hvg_sce, y, sel_genes='all', score='accuracy')
+```
+
+<!-- **Different sets of labels** You can train psupertime with a subset of the full set of labels.
+
+```{r, fig.show='hold', fig.height=4, fig.width=7, fig.cap="Labels over `psupertime`"}
+
+# y_subset  = c('1', '5', '6', '21', '22', '38')
+# psuper_sub  = psupertime(acinar_hvg_sce, y, y_labels=y_subset, sel_genes='all')
+# g         = plot_labels_over_psupertime(psuper_sub, label_name='Donor age')
+# (g)
+```
+ -->
+
+
+<!-- x, 
+y, 
+y_labels    = NULL, 
+sel_genes     = 'hvg', 
+gene_list     = NULL, 
+scale       = TRUE, 
+smooth      = TRUE, 
+min_expression  = 0.01,
+penalization  = '1se', 
+method      = 'cumulative', 
+score       = 'x_entropy', 
+n_folds     = 5, 
+test_propn    = 0.1, 
+lambdas     = NULL, 
+max_iters     = 1e3, 
+seed      = 1234
+ -->
