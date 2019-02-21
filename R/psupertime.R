@@ -64,10 +64,13 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 		if (ncol(x)!=length(y)) {
 			stop('length of y must be same as number of cells (columns) in SingleCellExperiment x')
 		}
+		n_genes 		= nrow(x)
+
 	} else if ( is.matrix(x) & is.numeric(x) ) {
 		if (nrow(x)!=length(y)) {
 			stop('length of y must be same as number of rows in matrix x')
 		}
+		n_genes 		= ncol(x)
 		if ( is.null(colnames(x)) ) {
 			stop('column names of x must be given, as gene names')
 		}
@@ -169,7 +172,8 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 
 	# put into list
 	params 	= list(
-		sel_genes 		= sel_genes
+		n_genes 		= n_genes
+		,sel_genes 		= sel_genes
 		,hvg_cutoff 	= hvg_cutoff
 		,bio_cutoff 	= bio_cutoff
 		,span 			= span
@@ -943,5 +947,26 @@ make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, proj_dt, bet
 		,scores_dt 		= scores_dt
 		)
 
+	# make psupertime object
+	class(psuper_obj) 	= c('psupertime', class(psuper_obj))
+
 	return(psuper_obj)
+}
+
+#' @keywords internal
+print.psupertime <- function(psuper_obj) {
+	# what trained on
+	n_cells 	= dim(psuper_obj$x_data)[1]
+	n_genes 	= psuper_obj$params$n_genes
+	n_sel 		= dim(psuper_obj$x_data)[2]
+	sel_genes 	= psuper_obj$params$sel_genes
+
+	# labels used
+	label_order = paste(levels(psuper_obj$y), collapse=', ')
+
+	# accuracy + sparsity
+	line_1 		= sprintf('psupertime object using %d cells * %d genes as input\n', n_cells, n_genes)
+	line_2 		= sprintf('%s genes selected for input, resulting in %d genes taken forward for training\n', sel_genes, n_sel)
+	line_3 		= sprintf('trained on this label ordering: %s\n', label_order)
+	line_4 		= sprintf('\nresult is classifier with mean %.0f\% accuracy, using subset of %d non-zero genes (%.0f\% of training genes)\n', 100*acc, n_nzero, sparse)
 }
