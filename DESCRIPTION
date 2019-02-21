@@ -1,6 +1,6 @@
 Package: psupertime
 Title: Psupertime is supervised pseudotime for single cell RNAseq data
-Version: 0.1.7.9003
+Version: 0.1.8.9000
 Authors@R: person("Will", "Macnair", email = "willmacnair@gmail.com", role = c("aut", "cre"))
 Description: Psupertime uses single cell RNAseq data, where the cells have a known ordering (which may be fuzzy) to identify a small number of genes which place cells in that known order. It can be used for discovery of relevant genes, for identification of subpopulations, and characterization of further unknown or differently labelled data.
 Depends: R (>= 3.4.3)

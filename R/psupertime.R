@@ -965,8 +965,18 @@ print.psupertime <- function(psuper_obj) {
 	label_order = paste(levels(psuper_obj$y), collapse=', ')
 
 	# accuracy + sparsity
+	sel_idx 	= psuper_obj$best_lambdas$which_idx
+	mean_acc_dt = psuper_obj$scores_dt[ score_var=='accuracy', list(mean_acc=mean(score_val)), by=lambda ]
+	acc 		= mean_acc_dt[sel_idx]$mean_acc
+	n_nzero 	= sum(psuper_obj$beta_dt$abs_beta>0)
+	sparse_prop = n_nzero / n_sel
+
+	# define outputs
 	line_1 		= sprintf('psupertime object using %d cells * %d genes as input\n', n_cells, n_genes)
-	line_2 		= sprintf('%s genes selected for input, resulting in %d genes taken forward for training\n', sel_genes, n_sel)
-	line_3 		= sprintf('trained on this label ordering: %s\n', label_order)
-	line_4 		= sprintf('\nresult is classifier with mean %.0f\% accuracy, using subset of %d non-zero genes (%.0f\% of training genes)\n', 100*acc, n_nzero, sparse)
+	line_2 		= sprintf('    label ordering used for training: %s\n', label_order)
+	line_3 		= sprintf('    genes selected for input: %s\n', sel_genes)
+	line_4 		= sprintf('    # genes taken forward for training: %d\n', n_sel)
+	line_5 		= sprintf('    # genes identified as relevant: %d (= %.0f%% of training genes)\n', n_nzero, 100*sparse_prop)
+	line_6 		= sprintf('    mean training accuracy: %.0f%%\n', 100*acc)
+	cat(line_1, line_2, line_3, line_4, line_5, line_6)
 }
