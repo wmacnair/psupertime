@@ -238,9 +238,9 @@ select_genes <- function(x, params) {
 
 		# list missing genes
 		missing_g 			= setdiff(sel_genes, expressed_genes)
-		if (length(missing_g)>0) {
-			message('the following genes have insufficient expression and will not be plotted:')
-			message(paste(missing_g, collapse=', '))
+		n_missing 			= length(missing_g)
+		if (n_missing>0) {
+			message(sprintf('%d genes have insufficient expression and will not be used as input to psupertime', n_missing))
 		}
 		sel_genes 			= intersect(expressed_genes, sel_genes)	
 	}
