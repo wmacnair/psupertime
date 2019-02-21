@@ -76,6 +76,8 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 	}
 	if (!is.factor(y)) {
 		y 	= factor(y)
+		message('converting y to a factor. label ordering used for training psupertime is:')
+		message(paste(levels(y), collapse=', '))
 	}
 	if (!is.null(y_labels)) {
 		stop('y_labels not yet implemented')
