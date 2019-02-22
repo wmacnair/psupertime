@@ -969,14 +969,14 @@ psupertime_go_analysis_old <- function(psuper_obj, org_mapping) {
 		# run enrichment tests on these, extract results
 		go_weight 	= topGO::runTest(topGO_data, algorithm = "weight01", statistic = "fisher")
 		go_temp 	= data.table::data.table(topGO::GenTable(topGO_data, 
-			weightFisher 	= go_weight, 
-			orderBy 		= 'weightFisher', 
-			ranksOf 		= 'weightFisher', 
+			p_go 	= go_weight, 
+			orderBy 		= 'p_go', 
+			ranksOf 		= 'p_go', 
 			topNodes 		= 1000
 			))
-		data.table::setnames(go_temp, 'weightFisher', 'temp')
-		go_temp[, weightFisher := as.numeric(temp) ]
-		go_temp[ temp == '< 1e-30', weightFisher := 9e-31 ]
+		data.table::setnames(go_temp, 'p_go', 'temp')
+		go_temp[, p_go := as.numeric(temp) ]
+		go_temp[ temp == '< 1e-30', p_go := 9e-31 ]
 		go_temp[, temp := NULL ]
 		go_temp[, direction := up_or_down]
 		go_temp[, rank := 1:nrow(go_temp)]
@@ -990,7 +990,7 @@ psupertime_go_analysis_old <- function(psuper_obj, org_mapping) {
 	# print top terms
 	p_cutoff 		= 5e-2
 	n_terms_cutoff 	= 5
-	print_dt 		= go_dt[ weightFisher < p_cutoff & Significant>n_terms_cutoff ]
+	print_dt 		= go_dt[ p_go < p_cutoff & Significant>n_terms_cutoff ]
 	if (nrow(print_dt)==0) {
 		message(sprintf('no GO terms met the cutoffs (p-value < %.1e and at least %d genes significant)', p_cutoff, n_terms_cutoff))
 	} else {
@@ -1007,7 +1007,7 @@ psupertime_go_analysis_old <- function(psuper_obj, org_mapping) {
 #' @param org_mapping Organism to use for annotations (e.g. 'org.Mm.eg.db', 'org.Hs.eg.db')
 #' @return data.table containing results of GO enrichment analysis
 #' @export
-psupertime_go_analysis <- function(psuper_obj, org_mapping, sig_cutoff=5) {
+psupertime_go_analysis <- function(psuper_obj, org_mapping, k=10, sig_cutoff=5) {
 	if ( !requireNamespace("topGO", quietly=TRUE) ) {
 		message('topGO not installed; not doing GO analysis')
 		return()
@@ -1038,7 +1038,7 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping, sig_cutoff=5) {
 	hclust_obj 		= hclust(dist(t(x_data)), method='complete')
 
 	# extract clusters from them
-	clusters_dt 	= calc_clusters_dt(hclust_obj, x_data, proj_dt)
+	clusters_dt 	= calc_clusters_dt(hclust_obj, x_data, proj_dt, k)
 	go_results 		= do_topgo_for_cluster(clusters_dt, sig_cutoff, org_mapping)
 
 	# make plot_dt
@@ -1062,9 +1062,9 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping, sig_cutoff=5) {
 #' @param proj_dt Projection of cells onto psupertime
 #' @return data.table containing clusters of genes, ordered according to correlation with psupertime
 #' @internal
-calc_clusters_dt <- function(hclust_obj, x_data, proj_dt) {
+calc_clusters_dt <- function(hclust_obj, x_data, proj_dt, k=10) {
 	# make thing
-	clusters_dt 	= data.table( h_clust=cutree(hclust_obj, k=10), symbol=colnames(x_data))
+	clusters_dt 	= data.table( h_clust=cutree(hclust_obj, k=k), symbol=colnames(x_data))
 	# add clustering
 	clusters_dt[, N:=.N, by=h_clust ]
 
@@ -1121,9 +1121,9 @@ do_topgo_for_cluster <- function(clusters_dt, sig_cutoff, org_mapping) {
 		suppressMessages({go_weight 	= runTest(topGO_data, algorithm = "weight", statistic = "fisher")})
 		n_terms 		= length(go_weight@score)
 		temp_results 	= data.table(GenTable(topGO_data, 
-			weightFisher 	= go_weight, 
-			orderBy 		= 'weightFisher', 
-			ranksOf 		= 'weightFisher', 
+			p_go 	= go_weight, 
+			orderBy 		= 'p_go', 
+			ranksOf 		= 'p_go', 
 			topNodes 		= n_terms
 			))
 		temp_results[ , cluster := c ]
@@ -1134,9 +1134,9 @@ do_topgo_for_cluster <- function(clusters_dt, sig_cutoff, org_mapping) {
 	message('')
 
 	# tidy up
-	setnames(go_results, 'weightFisher', 'tmp')
-	go_results[, weightFisher := as.numeric(tmp) ]
-	go_results[ tmp == '< 1e-30', weightFisher := 9e-31 ]
+	setnames(go_results, 'p_go', 'tmp')
+	go_results[, p_go := as.numeric(tmp) ]
+	go_results[ tmp == '< 1e-30', p_go := 9e-31 ]
 	go_results[ , tmp := NULL ]
 	go_results[ , cluster := factor(cluster, levels=all_clusters) ]
 
@@ -1187,8 +1187,8 @@ plot_go_results <- function(go_list, sig_cutoff=5, p_cutoff=0.1) {
 	go_results 	= go_list$go_results
 
 	# set up
-	plot_dt 	= go_results[ Significant>=sig_cutoff & weightFisher<p_cutoff ]
-	data.table::setorder(plot_dt, cluster, -weightFisher)
+	plot_dt 	= go_results[ Significant>=sig_cutoff & p_go<p_cutoff ]
+	data.table::setorder(plot_dt, cluster, -p_go)
 	plot_dt[, N := .N, by=Term ]
 	plot_dt[	  , term_n := Term ]
 	plot_dt[ N > 1, term_n := paste0(Term, '_', 1:.N), by=Term ]
@@ -1196,7 +1196,7 @@ plot_go_results <- function(go_list, sig_cutoff=5, p_cutoff=0.1) {
 
 	# plot
 	g = ggplot(plot_dt) +
-		aes( x=term_n, y=-log10(weightFisher) ) +
+		aes( x=term_n, y=-log10(p_go) ) +
 		geom_col() +
 		scale_y_continuous( breaks=scales::pretty_breaks() ) +
 		facet_grid( cluster ~ ., scales='free_y', space='free_y') +
