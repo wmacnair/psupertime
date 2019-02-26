@@ -9,7 +9,7 @@
 #' @export
 psupertime <- function(x, y, y_labels=NULL, 
 	sel_genes='hvg', gene_list=NULL, scale=TRUE, smooth=TRUE, min_expression=0.01,
-	penalization='1se', method='cumulative', score='x_entropy', 
+	penalization='1se', method='cumulative', score='xentropy', 
 	n_folds=5, test_propn=0.1, lambdas=NULL, max_iters=1e3, seed=1234) {
 	# parse params
 	params 			= check_params(x, y, y_labels, 
@@ -146,7 +146,7 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 	method 			= match.arg(method, method_list)
 	
 	# which statistical model to use for orginal logistic regression?
-	score_list 		= c('x_entropy', 'accuracy')
+	score_list 		= c('xentropy', 'accuracy')
 	score 			= match.arg(score, score_list)
 
 	# check inputs for training
@@ -760,6 +760,9 @@ calc_scores_for_one_fit <- function(glmnet_fit, x_valid, y_valid) {
 		)
 	scores_dt 		= melt(scores_wide, id='lambda', variable.name='score_var', value.name='score_val')
 
+	# put scores in nice order
+	scores_dt[, score_var := factor(score_var, levels=c('xentropy', 'class_error')) ]
+
 	return(scores_dt)
 }
 
@@ -772,35 +775,35 @@ calc_multiple_scores <- function(pred_classes, probs, y_valid, class_levels) {
 	bin_mat 		= t(sapply(y_valid, function(i) i==class_levels))
 
 	# calculate optional scores
-	accuracy 		= mean(pred_classes==y_valid)
-	# log_cohens_k 	= log10(mean( abs(pred_int - y_valid_int) ))
-	# log_cohens_k_2 	= log10(mean( (pred_int - y_valid_int)^2 ))
-	x_entropy 		= mean(x_entropy_fn(probs, bin_mat))
+	class_error 	= mean(pred_classes!=y_valid)
+	xentropy 		= mean(xentropy_fn(probs, bin_mat))
 
 	scores_vec 		= c(
-		accuracy 		= accuracy, 
-		# log_cohens_k 	= log_cohens_k, 
-		# log_cohens_k_2 	= log_cohens_k_2, 
-		x_entropy 		= x_entropy
+		class_error 	= class_error, 
+		xentropy 		= xentropy
 		)
 
 	return(scores_vec)
 }
 
 #' @keywords internal
-x_entropy_fn <- function(p_mat, bin_mat) {
+xentropy_fn <- function(p_mat, bin_mat) {
 	return( -rowSums(bin_mat * log2(p_mat), na.rm=TRUE) )
 }
 
 #' @keywords internal
 calc_mean_scores <- function(scores_dt) {
-	mean_scores 	= scores_dt[, list(mean=mean(score_val), se=sd(score_val)/sqrt(.N)), by=list(lambda,score_var) ]
-	dirn_lookup 	= data.table::data.table(
-		score_var 	= c('accuracy', 'log_cohens_k', 'log_cohens_k_2', 'x_entropy')
-		,dirn 		= c(1, -1, -1, -1)
-		)
-	mean_scores 	= dirn_lookup[ mean_scores, on='score_var' ]
-	mean_scores[, mean_pos := mean * dirn ]
+	# calculate mean scores
+	mean_scores 			= scores_dt[, 
+		list(
+			mean 	= mean(score_val), 
+			se 		= sd(score_val)/sqrt(.N)
+			), 
+		by = list(lambda, score_var)
+		]
+
+	# set up levels
+	mean_scores$score_var 	= factor(mean_scores$score_var, levels=levels(scores_dt$score_var))
 
 	return(mean_scores)
 }
@@ -810,8 +813,8 @@ calc_best_lambdas <- function(mean_scores) {
 	# 
 	best_dt = mean_scores[, 
 		list(
-			best_lambda = .SD[ which.max(mean_pos) ]$lambda,
-			next_lambda = max(.SD[ mean_pos > max(mean_pos) - se ]$lambda)
+			best_lambda = .SD[ which.min(mean) ]$lambda,
+			next_lambda = max(.SD[ mean < min(mean) + se ]$lambda)
 			),
 		by 	= score_var
 		]

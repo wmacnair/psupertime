@@ -73,13 +73,19 @@ plot_train_results <- function(psuper_obj) {
 		)
 	plot_dt[, Data := factor(Data, levels=c('train', 'test'))]
 
+	# add nice labels for accuracy measures
+	measure_list 	= c(xentropy='Cross entropy', class_error='Classification error')
+	mean_scores[, 	nice_score_var := factor(measure_list[score_var], levels=measure_list) ]
+	plot_dt[, 		nice_score_var := factor(measure_list[score_var], levels=measure_list) ]
+	lines_best[, 	nice_score_var := factor(measure_list[score_var], levels=measure_list) ]
+
 	# set up
 	g = ggplot() +
 		aes( x=log10(lambda) )
 	
-	# plot each fold
-	g = g + geom_point(data=scores_dt, aes(fill=factor(fold), y=score_val), colour='transparent', shape=21 ) +
-		scale_fill_brewer( palette='Set1' )
+	# # plot each fold
+	# g = g + geom_point(data=scores_dt, aes(fill=factor(fold), y=score_val), colour='transparent', shape=21 ) +
+	# 	scale_fill_brewer( palette='Set1' )
 
 	# plot test and training data
 	g = g + geom_linerange(data=mean_scores, aes(ymin=mean-se, ymax=mean+se), colour='grey' ) +
@@ -95,14 +101,17 @@ plot_train_results <- function(psuper_obj) {
 
 	# label nicely
 	g = g + 
-		facet_grid( score_var ~ ., scales='free_y' ) +
+		facet_grid( nice_score_var ~ ., scales='free_y' ) +
 		theme_bw() +
 		labs(
 			x 		= 'log10( lambda )'
 			,y 		= 'Accuracy measure'
 			,colour = 'Data'
-			,fill 	= 'Fold'
-			,title 	= sprintf('%s used for model selection', params$score)
+			# ,fill 	= 'Fold'
+			,title 	= sprintf('%s used for model selection', measure_list[params$score])
+			) +
+		theme(
+			plot.title 	= element_text( size=10, hjust=1 )
 			)
 
 	return(g)
