@@ -1016,7 +1016,7 @@ psupertime_go_analysis_old <- function(psuper_obj, org_mapping) {
 #' @param org_mapping Organism to use for annotations (e.g. 'org.Mm.eg.db', 'org.Hs.eg.db')
 #' @return data.table containing results of GO enrichment analysis
 #' @export
-psupertime_go_analysis <- function(psuper_obj, org_mapping, k=10, sig_cutoff=5) {
+psupertime_go_analysis <- function(psuper_obj, org_mapping, k=5, sig_cutoff=5) {
 	if ( !requireNamespace("topGO", quietly=TRUE) ) {
 		message('topGO not installed; not doing GO analysis')
 		return()
@@ -1071,7 +1071,7 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping, k=10, sig_cutoff=5) 
 #' @param proj_dt Projection of cells onto psupertime
 #' @return data.table containing clusters of genes, ordered according to correlation with psupertime
 #' @internal
-calc_clusters_dt <- function(hclust_obj, x_data, proj_dt, k=10) {
+calc_clusters_dt <- function(hclust_obj, x_data, proj_dt, k=5) {
 	# make thing
 	clusters_dt 	= data.table( h_clust=cutree(hclust_obj, k=k), symbol=colnames(x_data))
 	# add clustering
