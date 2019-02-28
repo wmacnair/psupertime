@@ -969,8 +969,8 @@ print.psupertime <- function(psuper_obj) {
 
 	# accuracy + sparsity
 	sel_idx 	= psuper_obj$best_lambdas$which_idx
-	mean_acc_dt = psuper_obj$scores_dt[ score_var=='accuracy', list(mean_acc=mean(score_val)), by=lambda ]
-	acc 		= mean_acc_dt[sel_idx]$mean_acc
+	mean_acc_dt = psuper_obj$scores_dt[ score_var=='class_error', list(mean_acc=mean(score_val)), by=lambda ]
+	acc 		= 1 - mean_acc_dt[sel_idx]$mean_acc
 	n_nzero 	= sum(psuper_obj$beta_dt$abs_beta>0)
 	sparse_prop = n_nzero / n_sel
 
