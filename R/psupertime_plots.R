@@ -1044,7 +1044,7 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping, k=5, sig_cutoff=5) {
 
 	# do clustering on symbols
 	message('clustering genes')
-	hclust_obj 		= hclust(dist(t(x_data)), method='complete')
+	hclust_obj 		= fastcluster::hclust(dist(t(x_data)), method='complete')
 
 	# extract clusters from them
 	clusters_dt 	= calc_clusters_dt(hclust_obj, x_data, proj_dt, k)
