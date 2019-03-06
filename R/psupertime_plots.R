@@ -430,7 +430,9 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, labels=c('Or
 	cuts_dt 	= psuper_obj$cuts_dt
 
 	# do plot
-	g1 			= plot_labels_over_psupertime(psuper_obj, label_name=labels[[1]])
+	x_label 	= sprintf('psupertime trained on %s', labels[[1]])
+	g1 = plot_labels_over_psupertime(psuper_obj, label_name=labels[[1]]) +
+		xlab( x_label )
 	g2 = ggplot(proj_new) +
 		aes( x=psuper, fill=label_input, colour=label_input) +
 		geom_density( alpha=0.5 ) +
@@ -443,7 +445,7 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, labels=c('Or
 			) +
 		scale_x_continuous( breaks=scales::pretty_breaks() ) +
 		labs(
-			x 		= 'psupertime'
+			x 		= x_label
 			,y 		= 'Density'
 			,fill 	= labels[[2]]
 			) +
