@@ -374,7 +374,7 @@ process_new_data <- function(psuper_obj, new_x) {
 #' @param new_x, new_y Optional pair of new data and labels
 #' @return data.table with projection and labels
 #' @export
-project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL) {
+project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL, process=TRUE) {
 	# unpack
 	glmnet_best 	= psuper_obj$glmnet_best
 	best_lambdas 	= psuper_obj$best_lambdas
@@ -384,7 +384,11 @@ project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL) {
 		x_in 			= psuper_obj$x_data
 		y_in 			= psuper_obj$y
 	} else if ( !is.null(new_x) & !is.null(new_y) ) {
-		x_in 			= process_new_data(psuper_obj, new_x)
+		if (process==TRUE) {
+			x_in 			= process_new_data(psuper_obj, new_x)
+		} else {
+			x_in 			= new_x
+		}
 		if (!is.factor(new_y)) {
 			new_y 			= factor(new_y)
 			message('converting new_y into factor, with the following ordered values:')
@@ -415,9 +419,9 @@ project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL) {
 #' @importFrom ggplot2 expand_limits
 #' @importFrom ggplot2 labs
 #' @importFrom ggplot2 theme_bw
-plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrBG') {
+plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrBG', process=FALSE) {
 	# project new data
-	proj_new 	= project_onto_psupertime(psuper_obj, new_x, new_y)
+	proj_new 	= project_onto_psupertime(psuper_obj, new_x, new_y, process)
 
 	# make nice colours
 	col_vals 	= make_col_vals(proj_new$label_input, palette)

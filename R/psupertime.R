@@ -131,7 +131,15 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 	# do smoothing, scaling?
 	stopifnot(is.logical(smooth))
 	stopifnot(is.logical(scale))
-	
+
+	# give warning about scaling
+	if (scale==FALSE) {
+		warning("'scale' is set to FALSE. If you are using pre-scaled data, ignore this warning.\nIf not, be aware that for LASSO regression to work properly, the input variables should be on the same scale.")
+		if (min_expression > 0) {
+			warning("If you are using pre-scaled data, then psupertime cannot tell which are zero values; consider setting 'min_expression' to 0.")
+		}
+	}
+
 	# what proportion of cells must express a gene for it to be included?
 	if ( !( is.numeric(min_expression) && ( min_expression>=0 & min_expression<=1) ) ) {
 		stop('min_expression must be a number greater than 0 and less than 1')
