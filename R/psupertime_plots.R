@@ -419,7 +419,7 @@ project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL, process=
 #' @importFrom ggplot2 expand_limits
 #' @importFrom ggplot2 labs
 #' @importFrom ggplot2 theme_bw
-plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrBG', process=FALSE) {
+plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, labels=c('Original', 'New data'), palette='BrBG', process=FALSE) {
 	# project new data
 	proj_new 	= project_onto_psupertime(psuper_obj, new_x, new_y, process)
 
@@ -430,7 +430,7 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrB
 	cuts_dt 	= psuper_obj$cuts_dt
 
 	# do plot
-	g1 			= plot_labels_over_psupertime(psuper_obj, label_name='Original')
+	g1 			= plot_labels_over_psupertime(psuper_obj, label_name=labels[[1]])
 	g2 = ggplot(proj_new) +
 		aes( x=psuper, fill=label_input, colour=label_input) +
 		geom_density( alpha=0.5 ) +
@@ -445,7 +445,7 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrB
 		labs(
 			x 		= 'psupertime'
 			,y 		= 'Density'
-			,fill 	= 'New data'
+			,fill 	= labels[[2]]
 			) +
 		theme_bw()
 
