@@ -169,8 +169,8 @@ plot_labels_over_psupertime <- function(psuper_obj, label_name='Ordered labels',
 
 	# plot
 	g = ggplot(proj_dt) +
-		aes( x=psuper, fill=label_input ) +
-		geom_density( alpha=0.5, colour='black' ) +
+		aes( x=psuper, fill=label_input, colour=label_input ) +
+		geom_density( alpha=0.5 ) +
 		scale_fill_manual( values=col_vals ) +
 		geom_vline( data=cuts_dt, aes(xintercept=psuper, colour=label_input) ) +
 		scale_colour_manual( values=col_vals ) +
@@ -417,20 +417,21 @@ project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL) {
 #' @importFrom ggplot2 theme_bw
 plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrBG') {
 	# project new data
-	proj_new 		= project_onto_psupertime(psuper_obj, new_x, new_y)
+	proj_new 	= project_onto_psupertime(psuper_obj, new_x, new_y)
 
 	# make nice colours
-	col_vals 		= make_col_vals(proj_new$label_input, palette)
+	col_vals 	= make_col_vals(proj_new$label_input, palette)
 
 	# get cutpoints
-	cuts_dt 		= psuper_obj$cuts_dt
+	cuts_dt 	= psuper_obj$cuts_dt
 
 	# do plot
-	g = ggplot(proj_new) +
-		aes( x=psuper, fill=label_input) +
-		geom_density( alpha=0.5, colour=NA ) +
+	g1 			= plot_labels_over_psupertime(psuper_obj, label_name='Original')
+	g2 = ggplot(proj_new) +
+		aes( x=psuper, fill=label_input, colour=label_input) +
+		geom_density( alpha=0.5 ) +
+		geom_vline( data=cuts_dt, aes(xintercept=psuper), colour='black' ) +
 		scale_fill_manual( values=col_vals ) +
-		geom_vline( data=cuts_dt, aes(xintercept=psuper, colour=label_input) ) +
 		scale_colour_manual( values=col_vals ) +
 		guides(
 			fill 	= guide_legend(override.aes = list(alpha=1))
@@ -440,9 +441,21 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, palette='BrB
 		labs(
 			x 		= 'psupertime'
 			,y 		= 'Density'
-			,fill 	= 'Ordered labels'
+			,fill 	= 'New data'
 			) +
 		theme_bw()
+
+	# give same x range
+	proj_orig 	= psuper_obj$proj_dt
+	x_range 	= c(
+		floor(min(quantile(proj_new$psuper, prob=0.01), quantile(proj_orig$psuper, prob=0.01))),
+		ceiling(max(quantile(proj_new$psuper, 0.99), quantile(proj_orig$psuper, 0.99)))
+		)
+	g1 			= g1 + coord_cartesian( xlim=x_range )
+	g2 			= g2 + coord_cartesian( xlim=x_range )
+
+	# put into grid
+	g			= cowplot::plot_grid(plotlist=list(g1, g2), labels=NULL, nrow=2, ncol=1, align='h', axis='lr')
 
 	return(g)
 }
