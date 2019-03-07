@@ -1308,6 +1308,7 @@ plot_profiles_of_gene_clusters <- function(go_list, label_name='Ordered labels',
 		geom_vline(data=cuts_dt, aes(xintercept=psuper, colour=label_input)) +
 		scale_colour_manual( values=col_vals ) +
 		geom_smooth( colour='black', span=0.2, method='loess' ) +
+		geom_rug( sides='b', alpha=0.1 ) +
 		facet_grid( clust_label ~ ., scales='free_y' ) +
 		theme_bw() +
 		theme(
