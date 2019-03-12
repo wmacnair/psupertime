@@ -53,44 +53,39 @@ psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', label_name='
 plot_train_results <- function(psuper_obj) {
 	# unpack
 	params 			= psuper_obj$params
-	glmnet_best 	= psuper_obj$glmnet_best
-	x_test 			= psuper_obj$x_test
-	y_test 			= psuper_obj$y_test
 	scores_dt 		= psuper_obj$scores_dt
-	mean_scores 	= calc_mean_scores(scores_dt)
+
+	# calculate mean scores
+	mean_scores 	= scores_dt[, 
+		list(
+			mean 	= mean(score_val), 
+			se 		= sd(score_val)/sqrt(.N)
+			), 
+		by = list(lambda, score_var, data)
+		]
 
 	# where should vertical lines go?
 	lines_best 		= copy(psuper_obj$best_dt)
 	lines_best[, selected := score_var==params$score ]
 
-	# calc test results
-	test_scores_dt 	= calc_scores_for_one_fit(glmnet_best, x_test, y_test)
-
-	# put together for plot
-	plot_dt 		= rbind(
-		test_scores_dt[ , list(lambda, score_var, mean_score=score_val, Data='test') ],
-		mean_scores[ 	, list(lambda, score_var, mean_score=mean, Data='train') ]
-		)
-	plot_dt[, Data := factor(Data, levels=c('train', 'test'))]
-
 	# add nice labels for accuracy measures
 	measure_list 	= c(xentropy='Cross entropy', class_error='Classification error')
 	mean_scores[, 	nice_score_var := factor(measure_list[score_var], levels=measure_list) ]
-	plot_dt[, 		nice_score_var := factor(measure_list[score_var], levels=measure_list) ]
+	# plot_dt[, 		nice_score_var := factor(measure_list[score_var], levels=measure_list) ]
 	lines_best[, 	nice_score_var := factor(measure_list[score_var], levels=measure_list) ]
 
 	# set up
-	g = ggplot() +
-		aes( x=log10(lambda) )
+	g = ggplot(mean_scores) +
+		aes( x=log10(lambda), y=mean, colour=data )
 	
 	# # plot each fold
 	# g = g + geom_point(data=scores_dt, aes(fill=factor(fold), y=score_val), colour='transparent', shape=21 ) +
 	# 	scale_fill_brewer( palette='Set1' )
 
 	# plot test and training data
-	g = g + geom_linerange(data=mean_scores, aes(ymin=mean-se, ymax=mean+se), colour='grey' ) +
-		geom_point(data=plot_dt, aes(y=mean_score, colour=Data) ) +
-		geom_line(data=plot_dt, aes(y=mean_score, colour=Data) ) +
+	g = g + geom_linerange(aes(ymin=mean-se, ymax=mean+se) ) +
+		geom_point() +
+		geom_line() +
 		scale_colour_manual( values=c('grey', 'black') )
 
 	# annotate with best lambdas, tidy up

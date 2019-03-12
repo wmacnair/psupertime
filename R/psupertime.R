@@ -32,13 +32,14 @@ psupertime <- function(x, y, y_labels=NULL,
 
 	# do tests on different folds
 	fold_list 		= get_fold_list(y_train, params)
-	scores_dt 		= train_on_folds(x_train, y_train, fold_list, params)
+	scores_train 	= train_on_folds(x_train, y_train, fold_list, params)
 
 	# find best scoring lambda options, train model on these
-	mean_scores 	= calc_mean_scores(scores_dt)
-	best_dt 		= calc_best_lambdas(mean_scores)
+	mean_train 		= calc_mean_train(scores_train)
+	best_dt 		= calc_best_lambdas(mean_train)
 	best_lambdas 	= get_best_lambdas(best_dt, params)
 	glmnet_best 	= get_best_fit(x_train, y_train, params)
+	scores_dt 		= make_scores_dt(glmnet_best, x_test, y_test, scores_train)
 
 	# do projections with this model
 	proj_dt 		= calc_proj_dt(glmnet_best, x_data, y, best_lambdas)
@@ -493,6 +494,9 @@ train_on_folds <- function(x_train, y_train, fold_list, params) {
 		scores_dt 		= rbind(scores_dt, temp_dt)
 	}
 
+	# add label
+	scores_dt[, data := 'train' ]
+
 	return(scores_dt)
 }
 
@@ -800,9 +804,9 @@ xentropy_fn <- function(p_mat, bin_mat) {
 }
 
 #' @keywords internal
-calc_mean_scores <- function(scores_dt) {
+calc_mean_train <- function(scores_train) {
 	# calculate mean scores
-	mean_scores 			= scores_dt[, 
+	mean_train 			= scores_train[, 
 		list(
 			mean 	= mean(score_val), 
 			se 		= sd(score_val)/sqrt(.N)
@@ -811,15 +815,15 @@ calc_mean_scores <- function(scores_dt) {
 		]
 
 	# set up levels
-	mean_scores$score_var 	= factor(mean_scores$score_var, levels=levels(scores_dt$score_var))
+	mean_train$score_var 	= factor(mean_train$score_var, levels=levels(scores_train$score_var))
 
-	return(mean_scores)
+	return(mean_train)
 }
 
 #' @keywords internal
-calc_best_lambdas <- function(mean_scores) {
+calc_best_lambdas <- function(mean_train) {
 	# 
-	best_dt = mean_scores[, 
+	best_dt = mean_train[, 
 		list(
 			best_lambda = .SD[ which.min(mean) ]$lambda,
 			next_lambda = max(.SD[ mean < min(mean) + se ]$lambda)
@@ -827,7 +831,7 @@ calc_best_lambdas <- function(mean_scores) {
 		by 	= score_var
 		]
 	# get indices for lambdas
-	lambdas 	= rev(sort(unique(mean_scores$lambda)))
+	lambdas 	= rev(sort(unique(mean_train$lambda)))
 	best_dt[, best_idx := which(lambdas==best_lambda), by = score_var ]
 	best_dt[, next_idx := which(lambdas==next_lambda), by = score_var ]
 
@@ -864,6 +868,16 @@ get_best_fit <- function(x_train, y_train, params) {
 		,maxit 	= params$max_iters
 		)
 	return(glmnet_best)
+}
+
+make_scores_dt <- function(glmnet_best, x_test, y_test, scores_train) {
+	scores_test 	= calc_scores_for_one_fit(glmnet_best, x_test, y_test)
+	scores_test[, fold := NA]
+	scores_test[, data := 'test' ]
+	scores_dt 		= rbind(scores_train, scores_test)
+	scores_dt[, data := factor(data, levels=c('train', 'test'))]
+
+	return(scores_dt)
 }
 
 #' @keywords internal
@@ -977,7 +991,7 @@ print.psupertime <- function(psuper_obj) {
 
 	# accuracy + sparsity
 	sel_idx 	= psuper_obj$best_lambdas$which_idx
-	mean_acc_dt = psuper_obj$scores_dt[ score_var=='class_error', list(mean_acc=mean(score_val)), by=lambda ]
+	mean_acc_dt = psuper_obj$scores_dt[ score_var=='class_error' & data=='train', list(mean_acc=mean(score_val)), by=lambda ]
 	acc 		= 1 - mean_acc_dt[sel_idx]$mean_acc
 	n_nzero 	= sum(psuper_obj$beta_dt$abs_beta>0)
 	sparse_prop = n_nzero / n_sel
