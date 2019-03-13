@@ -849,9 +849,11 @@ get_best_lambdas <- function(best_dt, params) {
 			,next_lambda 	= best_dt[ score_var==sel_score ]$next_lambda
 		)
 	if (params$penalization=='1se') {
-		best_lambdas$which_idx 	= best_lambdas$next_idx
+		best_lambdas$which_idx 		= best_lambdas$next_idx
+		best_lambdas$which_lambda 	= best_lambdas$next_lambda
 	} else if (params$penalization=='best') {
-		best_lambdas$which_idx 	= best_lambdas$best_idx
+		best_lambdas$which_idx 		= best_lambdas$best_idx
+		best_lambdas$which_lambda 	= best_lambdas$best_lambda
 	} else {
 		stop('invalid penalization')
 	}
@@ -990,9 +992,10 @@ print.psupertime <- function(psuper_obj) {
 	label_order = paste(levels(psuper_obj$y), collapse=', ')
 
 	# accuracy + sparsity
-	sel_idx 	= psuper_obj$best_lambdas$which_idx
-	mean_acc_dt = psuper_obj$scores_dt[ score_var=='class_error' & data=='train', list(mean_acc=mean(score_val)), by=lambda ]
-	acc 		= 1 - mean_acc_dt[sel_idx]$mean_acc
+	sel_lambda 	= psuper_obj$best_lambdas$which_lambda
+	mean_acc_dt = psuper_obj$scores_dt[ score_var=='class_error', list(mean_acc=mean(score_val)), by=list(lambda, data) ]
+	acc_train 	= 1 - mean_acc_dt[ lambda==sel_lambda & data=='train' ]$mean_acc
+	acc_test 	= 1 - mean_acc_dt[ lambda==sel_lambda & data=='test' ]$mean_acc
 	n_nzero 	= sum(psuper_obj$beta_dt$abs_beta>0)
 	sparse_prop = n_nzero / n_sel
 
@@ -1002,6 +1005,7 @@ print.psupertime <- function(psuper_obj) {
 	line_3 		= sprintf('    genes selected for input: %s\n', sel_genes)
 	line_4 		= sprintf('    # genes taken forward for training: %d\n', n_sel)
 	line_5 		= sprintf('    # genes identified as relevant: %d (= %.0f%% of training genes)\n', n_nzero, 100*sparse_prop)
-	line_6 		= sprintf('    mean training accuracy: %.0f%%\n', 100*acc)
-	cat(line_1, line_2, line_3, line_4, line_5, line_6)
+	line_6 		= sprintf('    mean training accuracy: %.0f%%\n', 100*acc_train)
+	line_7 		= sprintf('    mean test accuracy: %.0f%%\n', 100*acc_test)
+	cat(line_1, line_2, line_3, line_4, line_5, line_6, line_7)
 }
