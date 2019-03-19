@@ -54,6 +54,16 @@ plot_train_results <- function(psuper_obj) {
 	# unpack
 	params 			= psuper_obj$params
 	scores_dt 		= psuper_obj$scores_dt
+	glmnet_best 	= psuper_obj$glmnet_best
+
+	# add sparsity to plots
+	sparse_dt 		= data.table(
+		lambda 		= glmnet_best$lambda,
+		score_var 	= 'sparsity',
+		data 		= 'train',
+		mean 		= apply(abs(glmnet_best$beta)>0, 2, sum),
+		se 			= NA
+		)
 
 	# calculate mean scores
 	mean_scores 	= scores_dt[, 
@@ -66,16 +76,21 @@ plot_train_results <- function(psuper_obj) {
 
 	# where should vertical lines go?
 	lines_best 		= copy(psuper_obj$best_dt)
+	dummy_dt 		= data.table(score_var=c('sparsity', 'xentropy', 'class_error'))
+	lines_best 		= lines_best[ dummy_dt, on='score_var']
 	lines_best[, selected := score_var==params$score ]
 
 	# add nice labels for accuracy measures
-	measure_list 	= c(xentropy='Cross entropy', class_error='Classification error')
-	mean_scores[, 	nice_score_var := factor(measure_list[score_var], levels=measure_list) ]
-	# plot_dt[, 		nice_score_var := factor(measure_list[score_var], levels=measure_list) ]
-	lines_best[, 	nice_score_var := factor(measure_list[score_var], levels=measure_list) ]
+	plot_dt 		= rbind(mean_scores, sparse_dt)
+	measures_dt = data.table(
+		score_var 		= c('xentropy', 'class_error', 'sparsity'),
+		nice_score_var 	= c('Cross entropy', 'Classification error', 'Non-zero genes')
+		)
+	plot_dt 		= measures_dt[plot_dt, on='score_var']
+	lines_best 		= measures_dt[lines_best, on='score_var']
 
 	# set up
-	g = ggplot(mean_scores) +
+	g = ggplot(plot_dt) +
 		aes( x=log10(lambda), y=mean, colour=data )
 	
 	# # plot each fold
