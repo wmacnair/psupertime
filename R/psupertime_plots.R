@@ -456,7 +456,7 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, labels=c('Or
 	g2 			= g2 + coord_cartesian( xlim=x_range )
 
 	# put into grid
-	g			= cowplot::plot_grid(plotlist=list(g1, g2), labels=NULL, nrow=2, ncol=1, align='h', axis='lr')
+	g			= cowplot::plot_grid(plotlist=list(g1, g2), labels=NULL, nrow=2, ncol=1, align='v', axis='lr')
 
 	return(g)
 }
@@ -1280,6 +1280,7 @@ plot_heatmap_of_gene_clusters <- function(go_list) {
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 geom_vline
 #' @importFrom ggplot2 scale_colour_manual
+#' @importFrom ggplot2 geom_rug
 #' @importFrom ggplot2 geom_smooth
 #' @importFrom ggplot2 facet_grid
 #' @importFrom ggplot2 theme_bw
@@ -1302,9 +1303,13 @@ plot_profiles_of_gene_clusters <- function(go_list, label_name='Ordered labels',
 		aes( x=psuper, y=value ) +
 		geom_vline(data=cuts_dt, aes(xintercept=psuper, colour=label_input)) +
 		scale_colour_manual( values=col_vals ) +
-		geom_smooth( colour='black', span=0.2, method='loess' ) +
-		geom_rug( sides='b', alpha=0.1 ) +
-		facet_grid( clust_label ~ ., scales='free_y' ) +
+		geom_smooth( colour='black', span=0.2, method='loess' )
+	n_cells 	= length(unique(plot_dt$cell_id))
+	if ( n_cells<=2000 ) {
+		rug_dt 		= unique(means_dt[, list(psuper, cell_id)])
+		g = g + geom_rug(data=rug_dt, sides='b', alpha=0.1 )
+	}
+	g = g + facet_grid( clust_label ~ ., scales='free_y' ) +
 		theme_bw() +
 		theme(
 			axis.text 	= element_blank()
