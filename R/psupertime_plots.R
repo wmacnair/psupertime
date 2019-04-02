@@ -88,6 +88,9 @@ plot_train_results <- function(psuper_obj) {
 		)
 	plot_dt 		= measures_dt[plot_dt, on='score_var']
 	lines_best 		= measures_dt[lines_best, on='score_var']
+	
+	# which measure used for model selection?
+	nice_sel_var 		= measures_dt[ score_var==params$score ]$nice_score_var
 
 	# set up
 	g = ggplot(plot_dt) +
@@ -118,7 +121,7 @@ plot_train_results <- function(psuper_obj) {
 			,y 		= 'Accuracy measure'
 			,colour = 'Data'
 			# ,fill 	= 'Fold'
-			,title 	= sprintf('%s used for model selection', measure_list[params$score])
+			,title 	= sprintf('%s used for model selection', nice_sel_var)
 			) +
 		theme(
 			plot.title 	= element_text( size=10, hjust=1 )
