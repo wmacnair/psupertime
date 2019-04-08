@@ -1057,8 +1057,6 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping, k=5, sig_cutoff=5) {
 		message('fastcluster not installed; not doing GO analysis')
 		return()
 	}
-	library('topGO')
-	library('fastcluster')
 
 	# unpack
 	glmnet_best 	= psuper_obj$glmnet_best
@@ -1069,10 +1067,9 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping, k=5, sig_cutoff=5) {
 	cuts_dt 		= psuper_obj$cuts_dt
 
 	# put cells in nice order, label projections
-	rownames(x_data) 	= sprintf('cell_%04d', 1:nrow(x_data))
-	proj_dt[, cell_id := rownames(x_data) ]
-	setorder(proj_dt, psuper)
-	proj_dt[, cell_id := factor(cell_id) ]
+	rownames(x_data) 		= sprintf('cell_%04d', 1:nrow(x_data))
+	data.table::set(proj_dt, i=NULL, 'cell_id', rownames(x_data))
+	data.table::setorder(proj_dt, psuper)
 
 	# do clustering on symbols
 	message('clustering genes')
@@ -1318,14 +1315,13 @@ plot_profiles_of_gene_clusters <- function(go_list, label_name='Ordered labels',
 
 	# plot
 	g = ggplot(means_dt) +
-		aes( x=psuper, y=value ) +
 		geom_vline(data=cuts_dt, aes(xintercept=psuper, colour=label_input)) +
 		scale_colour_manual( values=col_vals ) +
-		geom_smooth( colour='black', span=0.2, method='loess' )
+		geom_smooth( colour='black', span=0.2, method='loess', aes( x=psuper, y=value ) )
 	n_cells 	= length(unique(plot_dt$cell_id))
 	if ( n_cells<=2000 ) {
-		rug_dt 		= unique(means_dt[, list(psuper, cell_id)])
-		g = g + geom_rug(data=rug_dt, sides='b', alpha=0.1 )
+		rug_dt 		= unique(plot_dt[, list(psuper, cell_id)])
+		g = g + geom_rug(data=rug_dt, sides='b', alpha=0.1, aes(x=psuper) )
 	}
 	g = g + facet_grid( clust_label ~ ., scales='free_y' ) +
 		theme_bw() +
