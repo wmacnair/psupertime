@@ -7,9 +7,7 @@
 
 ## How to install / use
 
-How to use this development version of the package:
-
-In R, 
+To use this development version of the package, run the following lines in R:
 ```R
 devtools::install_github('wmacnair/psupertime')
 library('psupertime')
