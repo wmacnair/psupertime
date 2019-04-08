@@ -13,6 +13,13 @@ devtools::install_github('wmacnair/psupertime')
 library('psupertime')
 ```
 
+## Basic analyses
+
+We have included a small dataset which allows you to use some of the basic functionality in `psupertime`. To do this, have a look at the vignettes:
+```R
+browseVignettes(package = 'psupertime')
+```
+
 This should load all of the code and relevant documentation. 
 
 ## Replicating analyses in the manuscript
