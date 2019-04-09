@@ -4,7 +4,8 @@
 \alias{project_onto_psupertime}
 \title{Gives projection of data onto psupertime (either using original data, or new data)}
 \usage{
-project_onto_psupertime(psuper_obj, new_x = NULL, new_y = NULL)
+project_onto_psupertime(psuper_obj, new_x = NULL, new_y = NULL,
+  process = TRUE)
 }
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}

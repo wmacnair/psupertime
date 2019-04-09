@@ -4,10 +4,15 @@
 \alias{plot_labels_over_psupertime}
 \title{Plots labels over their projected values on psupertime.}
 \usage{
-plot_labels_over_psupertime(psuper_obj, palette = "RdBu")
+plot_labels_over_psupertime(psuper_obj, label_name = "Ordered labels",
+  palette = "RdBu")
 }
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}
+
+\item{label_name}{Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')}
+
+\item{palette}{RColorBrewer palette to use}
 }
 \value{
 ggplot2 object

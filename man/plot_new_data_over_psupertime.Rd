@@ -4,12 +4,16 @@
 \alias{plot_new_data_over_psupertime}
 \title{Plots profiles of hand-selected genes against psupertime.}
 \usage{
-plot_new_data_over_psupertime(psuper_obj, new_x, new_y, palette = "BrBG")
+plot_new_data_over_psupertime(psuper_obj, new_x, new_y,
+  labels = c("Original", "New data"), palette = "BrBG",
+  process = FALSE)
 }
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}
 
 \item{new_x, new_y}{Optional data to predict with psuper_obj}
+
+\item{palette}{RColorBrewer palette to use}
 }
 \value{
 ggplot2 object

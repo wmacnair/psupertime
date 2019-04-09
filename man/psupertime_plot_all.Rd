@@ -5,7 +5,7 @@
 \title{Convenience function to do multiple plots}
 \usage{
 psupertime_plot_all(psuper_obj, output_dir = ".", tag = "",
-  ext = "png")
+  label_name = "Ordered labels", ext = "png")
 }
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}
@@ -13,6 +13,8 @@ psupertime_plot_all(psuper_obj, output_dir = ".", tag = "",
 \item{output_dir}{Directory to save to}
 
 \item{tag}{Label for all files}
+
+\item{label_name}{Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')}
 
 \item{ext}{Image format for outputs, compatible with ggsave (eps, ps, tex, pdf, jpeg, tiff, png, bmp, svg, wmf)}
 }

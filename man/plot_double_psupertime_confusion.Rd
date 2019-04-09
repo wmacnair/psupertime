@@ -5,7 +5,8 @@
 \title{Plots the confusion matrices of two psupertime objects against each other}
 \usage{
 plot_double_psupertime_confusion(double_obj, psuper_1 = NULL,
-  psuper_2 = NULL, run_names = NULL, plot_var = "prop_true")
+  psuper_2 = NULL, run_names = NULL, plot_var = "prop_true",
+  palette = "BuPu")
 }
 \arguments{
 \item{double_obj}{Result of applying double_psupertime to two previously calculated psupertime objects}
@@ -13,6 +14,8 @@ plot_double_psupertime_confusion(double_obj, psuper_1 = NULL,
 \item{psuper_1, }{psuper_2 Two previously calculated psupertime objects}
 
 \item{run_names}{Character vector of length two, labelling the psupertime inputs}
+
+\item{palette}{RColorBrewer palette to use}
 }
 \value{
 cowplot plot_grid object, showing known and predicted labels for each dataset, and each set of predictions

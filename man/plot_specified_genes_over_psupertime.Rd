@@ -5,10 +5,16 @@
 \title{Plots profiles of hand-selected genes against psupertime.}
 \usage{
 plot_specified_genes_over_psupertime(psuper_obj, extra_genes,
-  palette = "RdBu")
+  label_name = "Ordered labels", palette = "RdBu")
 }
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}
+
+\item{extra_genes}{}
+
+\item{label_name}{Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')}
+
+\item{palette}{RColorBrewer palette to use}
 }
 \value{
 ggplot2 object

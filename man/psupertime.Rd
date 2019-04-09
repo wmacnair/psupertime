@@ -7,7 +7,7 @@
 psupertime(x, y, y_labels = NULL, sel_genes = "hvg",
   gene_list = NULL, scale = TRUE, smooth = TRUE,
   min_expression = 0.01, penalization = "1se", method = "cumulative",
-  score = "x_entropy", n_folds = 5, test_propn = 0.1,
+  score = "xentropy", n_folds = 5, test_propn = 0.1,
   lambdas = NULL, max_iters = 1000, seed = 1234)
 }
 \arguments{

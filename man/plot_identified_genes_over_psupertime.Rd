@@ -4,11 +4,17 @@
 \alias{plot_identified_genes_over_psupertime}
 \title{Plots profiles of identified genes against psupertime.}
 \usage{
-plot_identified_genes_over_psupertime(psuper_obj, n_to_plot = 25,
-  palette = "RdBu")
+plot_identified_genes_over_psupertime(psuper_obj,
+  label_name = "Ordered labels", n_to_plot = 20, palette = "RdBu")
 }
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}
+
+\item{label_name}{Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')}
+
+\item{n_to_plot}{Maximum number of genes to plot (default 20)}
+
+\item{palette}{RColorBrewer palette to use}
 }
 \value{
 ggplot2 object
