@@ -16,9 +16,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-# library('psupertime')
-psuper_dir  = 'Z:/Documents/Code/psupertime'
-devtools::load_all(psuper_dir)
+library('psupertime')
 ```
 
 # `psupertime` overview
@@ -158,7 +156,7 @@ psuper_sel      = psupertime(
 ```{r}
 psuper_1se  = psupertime(acinar_hvg_sce, y, sel_genes='all', penalization='1se')
 psuper_best = psupertime(acinar_hvg_sce, y, sel_genes='all', penalization='best')
-psuper_acc  = psupertime(acinar_hvg_sce, y, sel_genes='all', score='accuracy')
+psuper_acc  = psupertime(acinar_hvg_sce, y, sel_genes='all', score='class_error')
 ```
 
 <!-- **Different sets of labels** You can train psupertime with a subset of the full set of labels.

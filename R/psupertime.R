@@ -155,7 +155,7 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 	method 			= match.arg(method, method_list)
 	
 	# which statistical model to use for orginal logistic regression?
-	score_list 		= c('xentropy', 'accuracy')
+	score_list 		= c('xentropy', 'class_error')
 	score 			= match.arg(score, score_list)
 
 	# check inputs for training
