@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 )
 library('psupertime')
 library('knitr')
-knit_print.psupertime = function(psuper_obj, ...) {
+knit_print.psupertime = function(psuper_obj) {
   psummary  = psupertime:::psummarize(psuper_obj)
   knitr::asis_output(psummary)
 }
