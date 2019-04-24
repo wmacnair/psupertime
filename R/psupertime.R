@@ -1032,6 +1032,7 @@ print.psupertime <- function(psuper_obj) {
 	cat(psummary)
 }
 
+#' @keywords internal
 knit_print.psupertime = function(psuper_obj, ...) {
 	psummary 	= psummarize(psuper_obj)
 	knitr::asis_output(psummary)
