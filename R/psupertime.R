@@ -1031,3 +1031,8 @@ print.psupertime <- function(psuper_obj) {
 	psummary 	= psummarize(psuper_obj)
 	cat(psummary)
 }
+
+knit_print.psupertime = function(psuper_obj, ...) {
+	psummary 	= psummarize(psuper_obj)
+	knitr::asis_output(psummary)
+}
