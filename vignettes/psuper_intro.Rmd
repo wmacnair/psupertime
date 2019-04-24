@@ -43,7 +43,7 @@ data(acinar_hvg_sce)
 x           = acinar_hvg_sce
 y           = acinar_hvg_sce$donor_age
 psuper_obj  = psupertime(acinar_hvg_sce, y, sel_genes='all')
-psuper_obj
+print(psuper_obj)
 ```
 
 (Calling `psuper_obj` or `print(psuper_obj)` gives a quick summary of the fitted model.)
@@ -168,9 +168,9 @@ psuper_sel      = psupertime(
 psuper_1se  = psupertime(acinar_hvg_sce, y, sel_genes='all', penalization='1se')
 psuper_best = psupertime(acinar_hvg_sce, y, sel_genes='all', penalization='best')
 psuper_acc  = psupertime(acinar_hvg_sce, y, sel_genes='all', score='class_error')
-psuper_1se
-psuper_best
-psuper_acc
+print(psuper_1se)
+print(psuper_best)
+print(psuper_acc)
 ```
 
 To see the full details of how `psupertime` can be used, read the documentation in the package:
