@@ -12,7 +12,7 @@ To use this development version of the package, run the following lines in R:
 remotes::install_github('wmacnair/psupertime', build = TRUE, build_opts = c("--no-resave-data", "--no-manual"))
 library('psupertime')
 ```
-(You may need to install the package `remotes`, with `install.packages('remotes')`. Installation took <25s on a Macbook Pro.)
+(You may need to install the package `remotes`, with `install.packages('remotes')`. Installation took <90s on a Macbook Pro.)
 
 This should load all of the code and relevant documentation. 
 
