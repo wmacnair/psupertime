@@ -18,6 +18,12 @@ knitr::opts_chunk$set(
   package.startup.message = FALSE
 )
 library('psupertime')
+library('knitr')
+knit_print.psupertime = function(psuper_obj) {
+  psummary  = psupertime:::psummarize(psuper_obj)
+  knitr::asis_output(psummary)
+}
+registerS3method("knit_print", "psupertime", knit_print.psupertime)
 ```
 
 # `psupertime` overview
