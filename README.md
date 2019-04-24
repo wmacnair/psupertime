@@ -9,9 +9,10 @@
 
 To use this development version of the package, run the following lines in R:
 ```R
-devtools::install_github('wmacnair/psupertime')
+remotes::install_github('wmacnair/psupertime', build = TRUE, build_opts = c("--no-resave-data", "--no-manual"))
 library('psupertime')
 ```
+(You may need to install the package `remotes`, with `install.packages('remotes')`. Installation took <25s on a Macbook Pro.)
 
 This should load all of the code and relevant documentation. 
 
@@ -21,6 +22,9 @@ We have included a small dataset which allows you to use some of the basic funct
 ```R
 browseVignettes(package = 'psupertime')
 ```
+`psupertime` is fast: running these analyses took a bit under 1 minute on a Macbook Pro. 
+The vignette also describes some of the additional functionality you can use, and full details are given in the documentation, via ```?psupertime```.
+
 
 ## Replicating analyses in the manuscript
 
@@ -34,3 +38,11 @@ Please add any issues or requests to the _Issues_ page. All feedback enthusiasti
 Cheers
 
 Will
+
+
+
+
+### System requirements
+
+`psupertime` requires R (>= 3.4.3), and the following dependencies: `ggplot2` 3.1.1, `data.table` 1.12.2, `glmnet` 2.0-16, `scales` 1.0.0, `stringr` 1.4.0, `scran` 1.10.2, `SingleCellExperiment` 1.4.1, `SummarizedExperiment` 1.12.0, `RColorBrewer` 1.1-2.
+
