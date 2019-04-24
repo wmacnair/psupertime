@@ -25,7 +25,7 @@ psupertime(x, y, y_labels = NULL, sel_genes = "hvg",
 
 \item{smooth}{Should the data be smoothed over neighbours? This is done to denoise the data; if you already done your own denoising, set this to FALSE.}
 
-\item{min_expression}{Cutoff for excluding genes based on non-zero expression in only a small proportion of cells; default is 1% of cells.}
+\item{min_expression}{Cutoff for excluding genes based on non-zero expression in only a small proportion of cells; default is 1\% of cells.}
 
 \item{penalization}{Method of selecting level of L1-penalization. 'best' uses the value of lambda giving the best cross-validation accuracy; '1se' corresponds to largest value of lambda within 1 standard error of the best. This increases sparsity with minimal increased error (and is the default).}
 
@@ -35,7 +35,7 @@ psupertime(x, y, y_labels = NULL, sel_genes = "hvg",
 
 \item{n_folds}{Number of folds to use for cross-validation; default is 5.}
 
-\item{test_propn}{Proportion of data to hold out for testing, separate to the cross-validation; default is 0.1 (10%).}
+\item{test_propn}{Proportion of data to hold out for testing, separate to the cross-validation; default is 0.1 (10\%).}
 
 \item{lambdas}{User-specified sequence of lambda values. Should be in decreasing order.}
 

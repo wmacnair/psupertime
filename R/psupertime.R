@@ -8,12 +8,12 @@
 #' @param gene_list If sel_genes is specified as 'list', gene_list specifies the list of user-specified genes.
 #' @param scale Should the log expression data for each gene be scaled to have mean zero and SD 1? Having the same scale ensures that L1-penalization functions properly; typically you would only set this to FALSE if you have already done your own scaling.
 #' @param smooth Should the data be smoothed over neighbours? This is done to denoise the data; if you already done your own denoising, set this to FALSE.
-#' @param min_expression Cutoff for excluding genes based on non-zero expression in only a small proportion of cells; default is 1% of cells. 
+#' @param min_expression Cutoff for excluding genes based on non-zero expression in only a small proportion of cells; default is 1\% of cells. 
 #' @param penalization Method of selecting level of L1-penalization. 'best' uses the value of lambda giving the best cross-validation accuracy; '1se' corresponds to largest value of lambda within 1 standard error of the best. This increases sparsity with minimal increased error (and is the default). 
 #' @param method Statistical model used for ordinal logistic regression, one of 'proportional', 'forward' and 'backward', corresponding to cumulative proportional odds, forward continuation ratio and backward continuation ratio. 
 #' @param score Cross-validated accuracy to be used to select model. May take values 'x_entropy' (default), or 'class_error', corresponding to cross-entropy and classification error respectively. Cross-entropy is a smooth measure, while classification error is based on discrete labels and tends to be a bit 'lumpy'.
 #' @param n_folds Number of folds to use for cross-validation; default is 5.
-#' @param test_propn Proportion of data to hold out for testing, separate to the cross-validation; default is 0.1 (10%).
+#' @param test_propn Proportion of data to hold out for testing, separate to the cross-validation; default is 0.1 (10\%).
 #' @param lambdas User-specified sequence of lambda values. Should be in decreasing order. 
 #' @param max_iters Maximum number of iterations to run in glmnet.
 #' @param seed Random seed for specifying cross-validation folds and test data
