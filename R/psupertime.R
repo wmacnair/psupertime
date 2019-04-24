@@ -3,13 +3,25 @@
 #'
 #' @param x Either SingleCellExperiment class containing all cells and genes required, or matrix of log TPM values.
 #' @param y Vector of labels, which should have same length as number of columns in sce / x. Factor levels will be taken as the intended order for training.
-#' @param y_labels Alternative ordering of the labels in y. All labels must be present in y. May be a subset of the labels in y.
-#' @param sel_genes Subset of genes to be used for training.
+#' @param y_labels Alternative ordering of the labels in y. All labels must be present in y.
+#' @param sel_genes Method to be used to select interesting genes to be used in psupertime. Must be a string, with permitted values 'hvg', 'all', 'TF' and 'list', corresponding to: highly variable genes, all genes, transcription factors, and a user-selected list. If sel_genes='list', then the parameter gene_list must also be specified as input, containing the user-specified list of genes. sel_genes may alternatively be a list, itself, specifying the parameters to be used for selecting highly variable genes via scran, with names 'hvg_cutoff', 'bio_cutoff' (optionally also 'span'). 
+#' @param gene_list If sel_genes is specified as 'list', gene_list specifies the list of user-specified genes.
+#' @param scale Should the log expression data for each gene be scaled to have mean zero and SD 1? Having the same scale ensures that L1-penalization functions properly; typically you would only set this to FALSE if you have already done your own scaling.
+#' @param smooth Should the data be smoothed over neighbours? This is done to denoise the data; if you already done your own denoising, set this to FALSE.
+#' @param min_expression Cutoff for excluding genes based on non-zero expression in only a small proportion of cells; default is 1% of cells. 
+#' @param penalization Method of selecting level of L1-penalization. 'best' uses the value of lambda giving the best cross-validation accuracy; '1se' corresponds to largest value of lambda within 1 standard error of the best. This increases sparsity with minimal increased error (and is the default). 
+#' @param method Statistical model used for ordinal logistic regression, one of 'proportional', 'forward' and 'backward', corresponding to cumulative proportional odds, forward continuation ratio and backward continuation ratio. 
+#' @param score Cross-validated accuracy to be used to select model. May take values 'x_entropy' (default), or 'class_error', corresponding to cross-entropy and classification error respectively. Cross-entropy is a smooth measure, while classification error is based on discrete labels and tends to be a bit 'lumpy'.
+#' @param n_folds Number of folds to use for cross-validation; default is 5.
+#' @param test_propn Proportion of data to hold out for testing, separate to the cross-validation; default is 0.1 (10%).
+#' @param lambdas User-specified sequence of lambda values. Should be in decreasing order. 
+#' @param max_iters Maximum number of iterations to run in glmnet.
+#' @param seed Random seed for specifying cross-validation folds and test data
 #' @return psupertime object
 #' @export
 psupertime <- function(x, y, y_labels=NULL, 
 	sel_genes='hvg', gene_list=NULL, scale=TRUE, smooth=TRUE, min_expression=0.01,
-	penalization='1se', method='cumulative', score='xentropy', 
+	penalization='1se', method='proportional', score='xentropy', 
 	n_folds=5, test_propn=0.1, lambdas=NULL, max_iters=1e3, seed=1234) {
 	# parse params
 	params 			= check_params(x, y, y_labels, 
@@ -151,7 +163,7 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 	penalization 	= match.arg(penalization, penalty_list)
 
 	# which statisical model to use for orginal logistic regression?
-	method_list 	= c('cumulative', 'forward', 'backward')
+	method_list 	= c('proportional', 'forward', 'backward')
 	method 			= match.arg(method, method_list)
 	
 	# which statistical model to use for orginal logistic regression?
@@ -482,7 +494,7 @@ train_on_folds <- function(x_train, y_train, fold_list, params) {
 		x_train_k 		= x_train[ !fold_idx, ]
 
 		# train model
-		glmnet_fit 		= glmnetcr_cumul(x_train_k, y_train_k, 
+		glmnet_fit 		= glmnetcr_propn(x_train_k, y_train_k, 
 			method 	= method
 			,lambda = lambdas
 			,maxit 	= max_iters
@@ -501,14 +513,14 @@ train_on_folds <- function(x_train, y_train, fold_list, params) {
 }
 
 #' @keywords internal
-glmnetcr_cumul <- function(x, y, method = "cumulative", weights = NULL, offset = NULL, 
+glmnetcr_propn <- function(x, y, method = "proportional", weights = NULL, offset = NULL, 
     alpha = 1, nlambda = 100, lambda.min.ratio = NULL, lambda = NULL, 
     standardize = TRUE, thresh = 1e-04, exclude, penalty.factor = NULL, 
     maxit = 100) {
     if (length(unique(y)) == 2) 
         stop("Binary response: Use glmnet with family='binomial' parameter")
-    method 	<- c("backward", "forward", "cumulative")[charmatch(method, 
-    	c("backward", "forward", "cumulative"))]
+    method 	<- c("backward", "forward", "proportional")[charmatch(method, 
+    	c("backward", "forward", "proportional"))]
     n <- nobs <- dim(x)[1]
     p <- m <- nvars <- dim(x)[2]
     k <- length(unique(y))
@@ -526,8 +538,8 @@ glmnetcr_cumul <- function(x, y, method = "cumulative", weights = NULL, offset =
     if (method == "forward") {
         restructure <- cr.forward(x = x, y = y, weights = weights)
     }
-    if (method == "cumulative") {
-        restructure <- restructure_cumul(x = x, y = y, weights = weights)
+    if (method == "proportional") {
+        restructure <- restructure_propodds(x = x, y = y, weights = weights)
     }
     glmnet.data <- list(x = restructure[, -c(1, 2)], y = restructure[, 
         "y"], weights = restructure[, "weights"])
@@ -545,7 +557,7 @@ glmnetcr_cumul <- function(x, y, method = "cumulative", weights = NULL, offset =
 }
 
 #' @keywords internal
-restructure_cumul <- function(x, y, weights) {
+restructure_propodds <- function(x, y, weights) {
 	yname 		= as.character(substitute(y))
 	if (!is.factor(y)) { y = factor(y, exclude = NA) }
 	ylevels 	= levels(y)
@@ -572,7 +584,7 @@ restructure_cumul <- function(x, y, weights) {
 }
 
 #' @keywords internal
-predict_glmnetcr_cumul <- function(object, newx=NULL, newy=NULL, ...) {
+predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 	if (is.null(newx)) {
 		newx 		= object$x
 		y 			= object$y
@@ -581,7 +593,7 @@ predict_glmnetcr_cumul <- function(object, newx=NULL, newy=NULL, ...) {
 		y 			= newy
 	}
 	method 		= object$method
-	method 		= c("backward", "forward", "cumulative")[charmatch(method, c("backward", "forward", "cumulative"))]
+	method 		= c("backward", "forward", "proportional")[charmatch(method, c("backward", "forward", "proportional"))]
 	y_levels 	= levels(object$y)
 	k 			= length(y_levels)
 	if (class(newx) == "numeric") {
@@ -677,7 +689,7 @@ predict_glmnetcr_cumul <- function(object, newx=NULL, newy=NULL, ...) {
 				pi[, k, i] 	= 1 - apply(pi[, 1:(k - 1), i], 1, sum)
 			}
 		}
-		if (method == "cumulative") {
+		if (method == "proportional") {
 			for (j in 1:k) {
 				if (j == 1) {
 					pi[, j, i] 	= minus.delta[, j]
@@ -720,7 +732,7 @@ predict_glmnetcr_cumul <- function(object, newx=NULL, newy=NULL, ...) {
 				LL_mat[, i] = LL_mat[, i] + log(delta[, j]) * y.mat[, j] + log(1 - delta[, j]) * ygeh
 			}
 		}
-		if (method == "cumulative") {
+		if (method == "proportional") {
 			for (j in 1:(k - 1)) {
 				if (class(y.mat[, j:k]) == "matrix") {
 					ygeh 		= apply(y.mat[, j:k], 1, sum)
@@ -751,7 +763,7 @@ predict_glmnetcr_cumul <- function(object, newx=NULL, newy=NULL, ...) {
 #' @keywords internal
 calc_scores_for_one_fit <- function(glmnet_fit, x_valid, y_valid) {
 	# get predictions
-	predictions 	= predict_glmnetcr_cumul(glmnet_fit, x_valid, y_valid)
+	predictions 	= predict_glmnetcr_propodds(glmnet_fit, x_valid, y_valid)
 	pred_classes 	= predictions$class
 	probs 			= predictions$probs
 	lambdas 		= glmnet_fit$lambda
@@ -863,7 +875,7 @@ get_best_lambdas <- function(best_dt, params) {
 #' @keywords internal
 get_best_fit <- function(x_train, y_train, params) {
 	message('fitting best model with all training data')
-	glmnet_best 	= glmnetcr_cumul(
+	glmnet_best 	= glmnetcr_propn(
 		x_train, y_train
 		,method = params$method
 		,lambda = params$lambdas
@@ -908,7 +920,7 @@ calc_proj_dt <- function(glmnet_best, x_data, y_labels, best_lambdas) {
 	# a0_best 	= glmnet_best$a0[[which_idx]]
 	# y_proj 		= a0_best + x_data %*% matrix(beta_best, ncol=1)
 	psuper 			= x_data %*% matrix(beta_best, ncol=1)
-	predictions 	= predict_glmnetcr_cumul(glmnet_best, x_data, y_labels)
+	predictions 	= predict_glmnetcr_propodds(glmnet_best, x_data, y_labels)
 	pred_classes 	= factor(predictions$class[, which_idx], levels=levels(glmnet_best$y))
 
 	# put into data.table

@@ -6,18 +6,42 @@
 \usage{
 psupertime(x, y, y_labels = NULL, sel_genes = "hvg",
   gene_list = NULL, scale = TRUE, smooth = TRUE,
-  min_expression = 0.01, penalization = "1se", method = "cumulative",
-  score = "xentropy", n_folds = 5, test_propn = 0.1,
-  lambdas = NULL, max_iters = 1000, seed = 1234)
+  min_expression = 0.01, penalization = "1se",
+  method = "proportional", score = "xentropy", n_folds = 5,
+  test_propn = 0.1, lambdas = NULL, max_iters = 1000, seed = 1234)
 }
 \arguments{
 \item{x}{Either SingleCellExperiment class containing all cells and genes required, or matrix of log TPM values.}
 
 \item{y}{Vector of labels, which should have same length as number of columns in sce / x. Factor levels will be taken as the intended order for training.}
 
-\item{y_labels}{Alternative ordering of the labels in y. All labels must be present in y. May be a subset of the labels in y.}
+\item{y_labels}{Alternative ordering of the labels in y. All labels must be present in y.}
 
-\item{sel_genes}{Subset of genes to be used for training.}
+\item{sel_genes}{Method to be used to select interesting genes to be used in psupertime. Must be a string, with permitted values 'hvg', 'all', 'TF' and 'list', corresponding to: highly variable genes, all genes, transcription factors, and a user-selected list. If sel_genes='list', then the parameter gene_list must also be specified as input, containing the user-specified list of genes. sel_genes may alternatively be a list, itself, specifying the parameters to be used for selecting highly variable genes via scran, with names 'hvg_cutoff', 'bio_cutoff' (optionally also 'span').}
+
+\item{gene_list}{If sel_genes is specified as 'list', gene_list specifies the list of user-specified genes.}
+
+\item{scale}{Should the log expression data for each gene be scaled to have mean zero and SD 1? Having the same scale ensures that L1-penalization functions properly; typically you would only set this to FALSE if you have already done your own scaling.}
+
+\item{smooth}{Should the data be smoothed over neighbours? This is done to denoise the data; if you already done your own denoising, set this to FALSE.}
+
+\item{min_expression}{Cutoff for excluding genes based on non-zero expression in only a small proportion of cells; default is 1% of cells.}
+
+\item{penalization}{Method of selecting level of L1-penalization. 'best' uses the value of lambda giving the best cross-validation accuracy; '1se' corresponds to largest value of lambda within 1 standard error of the best. This increases sparsity with minimal increased error (and is the default).}
+
+\item{method}{Statistical model used for ordinal logistic regression, one of 'proportional', 'forward' and 'backward', corresponding to cumulative proportional odds, forward continuation ratio and backward continuation ratio.}
+
+\item{score}{Cross-validated accuracy to be used to select model. May take values 'x_entropy' (default), or 'class_error', corresponding to cross-entropy and classification error respectively. Cross-entropy is a smooth measure, while classification error is based on discrete labels and tends to be a bit 'lumpy'.}
+
+\item{n_folds}{Number of folds to use for cross-validation; default is 5.}
+
+\item{test_propn}{Proportion of data to hold out for testing, separate to the cross-validation; default is 0.1 (10%).}
+
+\item{lambdas}{User-specified sequence of lambda values. Should be in decreasing order.}
+
+\item{max_iters}{Maximum number of iterations to run in glmnet.}
+
+\item{seed}{Random seed for specifying cross-validation folds and test data}
 }
 \value{
 psupertime object
