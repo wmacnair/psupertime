@@ -559,7 +559,7 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 	}
 
 	# get predicted classes for each thing
-	predictions 	= predict_glmnetcr_cumul(glmnet_best, x_in, y_in)
+	predictions 	= predict_glmnetcr_propodds(glmnet_best, x_in, y_in)
 	pred_classes 	= factor(predictions$class[, which_idx], levels=levels(psuper_obj$y))
 	predict_dt 		= data.table::data.table( predicted=pred_classes, true=y_in )
 
