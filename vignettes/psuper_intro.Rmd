@@ -14,9 +14,10 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  package.startup.message = FALSE
 )
-suppressPackageStartupMessages(library('psupertime'))
+library('psupertime')
 ```
 
 # `psupertime` overview
@@ -42,7 +43,7 @@ data(acinar_hvg_sce)
 x           = acinar_hvg_sce
 y           = acinar_hvg_sce$donor_age
 psuper_obj  = psupertime(acinar_hvg_sce, y, sel_genes='all')
-psuper_obj
+print(psuper_obj)
 ```
 
 (Calling `psuper_obj` or `print(psuper_obj)` gives a quick summary of the fitted model.)

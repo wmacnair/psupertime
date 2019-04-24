@@ -992,8 +992,9 @@ make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, proj_dt, bet
 	return(psuper_obj)
 }
 
+#' Text to summarize psupertime object
 #' @keywords internal
-print.psupertime <- function(psuper_obj) {
+psummarize <- function(psuper_obj) {
 	# what trained on
 	n_cells 	= dim(psuper_obj$x_data)[1]
 	n_genes 	= psuper_obj$params$n_genes
@@ -1019,5 +1020,20 @@ print.psupertime <- function(psuper_obj) {
 	line_5 		= sprintf('    # genes identified as relevant: %d (= %.0f%% of training genes)\n', n_nzero, 100*sparse_prop)
 	line_6 		= sprintf('    mean training accuracy: %.0f%%\n', 100*acc_train)
 	line_7 		= sprintf('    mean test accuracy: %.0f%%\n', 100*acc_test)
-	cat(line_1, line_2, line_3, line_4, line_5, line_6, line_7)
+
+	# join lines together
+	psummary 	= paste(line_1, line_2, line_3, line_4, line_5, line_6, line_7, sep = "")
+	return(psummary)
+}
+
+#' @keywords internal
+print.psupertime <- function(psuper_obj) {
+	psummary 	= psummarize(psuper_obj)
+	cat(psummary)
+}
+
+#' @keywords internal
+knit_print.psupertime = function(psuper_obj, ...) {
+	psummary 	= psummarize(psuper_obj)
+	knitr::asis_output(psummary)
 }
