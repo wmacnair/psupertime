@@ -438,7 +438,7 @@ make_x_data <- function(x, sel_genes, params) {
 	}
 
 	# make all gene names nice
-	warning('is replacing hyphens in gene names necessary?')
+	# warning('is replacing hyphens in gene names necessary?')
 	old_names 			= colnames(x_data)
 	new_names 			= stringr::str_replace_all(old_names, '-', '.')
 	colnames(x_data) 	= new_names

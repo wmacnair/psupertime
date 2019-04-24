@@ -311,7 +311,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 #' @param label_name Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')
 #' @param palette RColorBrewer palette to use
 #' @return ggplot2 object
-#' @export
+#' @internal
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 element_blank
 #' @importFrom ggplot2 facet_wrap
@@ -328,7 +328,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_name='Ordered labels', palette='RdBu') {
 	stop('not implemented yet')
 	# get smoothed data across all genes
-	x_all 		= make_x_data(sce, rownames(sce), y_labels, params)
+	x_all 		= make_x_data(sce, rownames(sce), params)
 
 	# restrict to just this set
 	extra_genes = intersect(extra_genes, colnames(x_all))
