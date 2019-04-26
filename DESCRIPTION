@@ -18,6 +18,7 @@ Imports: data.table,
     grDevices,
     scales
 Suggests: 
+    BiocStyle, 
     topGO,
     cowplot,
     fastcluster,
