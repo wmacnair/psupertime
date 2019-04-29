@@ -1026,7 +1026,7 @@ psummarize <- function(psuper_obj) {
 	return(psummary)
 }
 
-#' @keywords internal
+#' @keywords export
 print.psupertime <- function(psuper_obj) {
 	psummary 	= psummarize(psuper_obj)
 	cat(psummary)
