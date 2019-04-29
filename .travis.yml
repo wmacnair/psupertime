@@ -1,1 +1,9 @@
 language: r
+warnings_are_errors: false
+bioc_packages:
+  - scran
+  - SummarizedExperiment
+  - BiocStyle
+  - SingleCellExperiment
+  - SummarizedExperiment
+  - topGO
