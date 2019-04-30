@@ -4,6 +4,8 @@
 
 `psupertime` is an R package which uses single cell RNAseq data, where the cells have labels following a known sequence (e.g. a time series), to identify a small number of genes which place cells in that known order. It can be used for discovery of relevant genes, for exploration of unlabelled data, and assessment of one dataset with respect to the labels known for another dataset.
 
+Read the pre-print here:
+https://www.biorxiv.org/content/10.1101/622001v1
 
 ## How to install / use
 
