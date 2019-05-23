@@ -4,8 +4,8 @@
 \alias{check_params}
 \title{check all parameters}
 \usage{
-check_params(x, y, y_labels, sel_genes, gene_list, scale, smooth,
-  min_expression, penalization, method, score, n_folds, test_propn,
+check_params(x, y, y_labels, assay_type, sel_genes, gene_list, scale,
+  smooth, min_expression, penalization, method, score, n_folds, test_propn,
   lambdas, max_iters, seed)
 }
 \value{

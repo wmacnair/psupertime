@@ -1,10 +1,11 @@
 #################
 #' Supervised pseudotime
 #'
-#' @param x Either SingleCellExperiment class containing all cells and genes required, or matrix of log TPM values.
+#' @param x Either SingleCellExperiment object containing a matrix of genes * cells required, or a matrix of log TPM values (also genes * cells).
 #' @param y Vector of labels, which should have same length as number of columns in sce / x. Factor levels will be taken as the intended order for training.
 #' @param y_labels Alternative ordering of the labels in y. All labels must be present in y.
-#' @param sel_genes Method to be used to select interesting genes to be used in psupertime. Must be a string, with permitted values 'hvg', 'all', 'TF' and 'list', corresponding to: highly variable genes, all genes, transcription factors, and a user-selected list. If sel_genes='list', then the parameter gene_list must also be specified as input, containing the user-specified list of genes. sel_genes may alternatively be a list, itself, specifying the parameters to be used for selecting highly variable genes via scran, with names 'hvg_cutoff', 'bio_cutoff' (optionally also 'span'). 
+#' @param assay_type If a SingleCellExperiment object is used as input, specifies which assay is to be used.
+#' @param sel_genes Method to be used to select interesting genes to be used in psupertime. Must be a string, with permitted values 'hvg', 'all', 'tf_mouse', 'tf_human' and 'list', corresponding to: highly variable genes, all genes, transcription factors in mouse, transcription factors in human, and a user-selected list. If sel_genes='list', then the parameter gene_list must also be specified as input, containing the user-specified list of genes. sel_genes may alternatively be a list, itself, specifying the parameters to be used for selecting highly variable genes via scran, with names 'hvg_cutoff', 'bio_cutoff' (optionally also 'span'). 
 #' @param gene_list If sel_genes is specified as 'list', gene_list specifies the list of user-specified genes.
 #' @param scale Should the log expression data for each gene be scaled to have mean zero and SD 1? Having the same scale ensures that L1-penalization functions properly; typically you would only set this to FALSE if you have already done your own scaling.
 #' @param smooth Should the data be smoothed over neighbours? This is done to denoise the data; if you already done your own denoising, set this to FALSE.
@@ -19,13 +20,13 @@
 #' @param seed Random seed for specifying cross-validation folds and test data
 #' @return psupertime object
 #' @export
-psupertime <- function(x, y, y_labels=NULL, 
+psupertime <- function(x, y, y_labels=NULL, assay_type='logcounts',
 	sel_genes='hvg', gene_list=NULL, scale=TRUE, smooth=TRUE, min_expression=0.01,
 	penalization='1se', method='proportional', score='xentropy', 
 	n_folds=5, test_propn=0.1, lambdas=NULL, max_iters=1e3, seed=1234) {
 	# parse params
 	params 			= check_params(x, y, y_labels, 
-		sel_genes, gene_list, scale, smooth, 
+		assay_type, sel_genes, gene_list, scale, smooth, 
 		min_expression, penalization, method, score, 
 		n_folds, test_propn, lambdas, max_iters, seed)
 
@@ -67,29 +68,26 @@ psupertime <- function(x, y, y_labels=NULL,
 #'
 #' @return list of validated parameters
 #' @keywords internal
-check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, min_expression, 
+check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale, smooth, min_expression, 
 	penalization, method, score, n_folds, test_propn, lambdas, max_iters, seed) {
 	# check input data looks ok
-	if ( class(x)=='SingleCellExperiment') {
-		if ( !('logcounts' %in% names(SummarizedExperiment::assays(x))) ) {
-			stop('if x is a SingleCellExperiment, it must contain the assay logcounts')
-		}
-		if (ncol(x)!=length(y)) {
-			stop('length of y must be same as number of cells (columns) in SingleCellExperiment x')
-		}
-		n_genes 		= nrow(x)
-
-	} else if ( is.matrix(x) & is.numeric(x) ) {
-		if (nrow(x)!=length(y)) {
-			stop('length of y must be same as number of rows in matrix x')
-		}
-		n_genes 		= ncol(x)
-		if ( is.null(colnames(x)) ) {
-			stop('column names of x must be given, as gene names')
-		}
-	} else {
-		stop('x must be either a SingleCellExperiment or a matrix of counts')
+	if (!(class(x) %in% c('SingleCellExperiment', 'matrix'))) {
+		stop('x must be either a SingleCellExperiment or a matrix of log counts')
 	}
+	if ( class(x)=='SingleCellExperiment') {
+		if ( !(assay_type %in% names(SummarizedExperiment::assays(x))) ) {
+			stop(paste0('SingleCellExperiment x does not contain the specified assay, ', assay_type))
+		}
+	} else if ( is.matrix(x) & is.numeric(x) ) {
+		if ( is.null(rownames(x)) ) {
+			stop('row names of x must be given, as gene names')
+		}
+	}
+	if (ncol(x)!=length(y)) {
+		stop('length of y must be same as number of cells (columns) in SingleCellExperiment x')
+	}
+	n_genes 		= nrow(x)
+
 	if (!is.factor(y)) {
 		y 	= factor(y)
 		message('converting y to a factor. label ordering used for training psupertime is:')
@@ -103,7 +101,7 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 	}
 
 	# check selection of genes is valid
-	sel_genes_list 	= c('hvg', 'all', 'TF', 'list')
+	sel_genes_list 	= c('hvg', 'all', 'tf_mouse', 'tf_human', 'list')
 	span_default 	= 0.1
 	if (!is.character(sel_genes)) {
 		if ( !is.list(sel_genes) || !all(c('hvg_cutoff', 'bio_cutoff') %in% names(sel_genes)) ) {
@@ -194,6 +192,7 @@ check_params <- function(x, y, y_labels, sel_genes, gene_list, scale, smooth, mi
 	# put into list
 	params 	= list(
 		n_genes 		= n_genes
+		,assay_type 	= assay_type
 		,sel_genes 		= sel_genes
 		,hvg_cutoff 	= hvg_cutoff
 		,bio_cutoff 	= bio_cutoff
@@ -237,15 +236,13 @@ select_genes <- function(x, params) {
 
 	} else {
 		if ( sel_genes=='all' ) {
-			if (class(x)=='SingleCellExperiment') {
-				sel_genes 	= rownames(x)
-			} else if (class(x)=='matrix') {
-				sel_genes 	= colnames(x)
-			} else { stop() }
+			sel_genes 	= rownames(x)
 
-		} else if ( sel_genes=='TF' ) {
-			# sel_genes 	= get_tf_list()
-			sel_genes 	= tf_list
+		} else if ( sel_genes=='tf_mouse' ) {
+			sel_genes 	= tf_mouse
+
+		} else if ( sel_genes=='tf_human' ) {
+			sel_genes 	= tf_human
 
 		} else {
 			stop()
@@ -287,6 +284,9 @@ select_genes <- function(x, params) {
 calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	message('identifying highly variable genes')
 	assay_type 		= 'logcounts'
+	if (!(assay_type %in% names(assays(sce)))) {
+		stop('to calculate highly variable genes (HVGs) with scran, x must contain the assay "logcounts"')
+	}
 	# var_fit 		= scran::trendVar(sce, assay.type=assay_type, method="loess", use.spikes=FALSE, span=0.1)
 	span 			= ifelse(is.null(params$span), 0.1, params$span)
 	var_fit 		= scran::trendVar(SummarizedExperiment::assay(sce, assay_type), method="loess", loess.args=list(span=span))
@@ -378,9 +378,9 @@ make_x_data <- function(x, sel_genes, params) {
 	message('processing data')
 	# get matrix
 	if ( class(x)=='SingleCellExperiment' ) {
-		x_data 		= t(SummarizedExperiment::assay(x, 'logcounts'))
+		x_data 		= t(SummarizedExperiment::assay(x, params$assay_type))
 	} else if ( class(x)=='matrix' ) {
-		x_data 		= x
+		x_data 		= t(x)
 	} else {
 		stop('x must be either a SingleCellExperiment or a matrix of counts')
 	}
@@ -438,10 +438,16 @@ make_x_data <- function(x, sel_genes, params) {
 	}
 
 	# make all gene names nice
-	# warning('is replacing hyphens in gene names necessary?')
 	old_names 			= colnames(x_data)
-	new_names 			= stringr::str_replace_all(old_names, '-', '.')
-	colnames(x_data) 	= new_names
+	hyphen_idx 			= stringr::str_detect(old_names, '-')
+	if (any(hyphen_idx)) {
+		message('    hyphens detected in the following gene names:')
+		message('        ', appendLF=FALSE)
+		message(paste(old_names[hyphen_idx], collapse=', '))
+		message('    these have been replaced with .s')
+		new_names 			= stringr::str_replace_all(old_names, '-', '.')
+		colnames(x_data) 	= new_names
+	}
 
 	message(sprintf('    processed data is %d cells * %d genes', nrow(x_data), ncol(x_data)))
 

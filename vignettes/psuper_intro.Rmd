@@ -29,7 +29,7 @@ In this short vignette, we show a simple example of `psupertime`, corresponding 
 
 `psupertime` requires two inputs:
 
-- `x`, containing single cell log pseudocount data, either as a `SingleCellExperiment` object or a matrix with rows as cells and columns as genes; and
+- `x`, containing single cell log pseudocount data, either as a `SingleCellExperiment` object or a matrix with rows as genes and columns as cells; and
 - `y`, a factor with labels for each cell, where the sequence of the factor levels is the required sequential label ordering.
 
 We demonstrate `psupertime` on a small example dataset, comprising pancreas cells taken from donors of varying ages. The most straightforward way to run `psupertime` is very simple:
@@ -44,7 +44,6 @@ suppressPackageStartupMessages({
 data(acinar_hvg_sce)
 
 # run psupertime
-x           = acinar_hvg_sce
 y           = acinar_hvg_sce$donor_age
 psuper_obj  = psupertime(acinar_hvg_sce, y, sel_genes='all')
 psuper_obj
@@ -155,7 +154,7 @@ psuper_hvg_custom2  = psupertime(acinar_hvg_sce, y, sel_genes=list(hvg_cutoff=0.
 psuper_all      = psupertime(acinar_hvg_sce, y, sel_genes='all')
 
 # Option 4: Use transcription factors
-psuper_tf       = psupertime(acinar_hvg_sce, y, sel_genes='TF')
+psuper_tf       = psupertime(acinar_hvg_sce, y, sel_genes='tf_human')
 
 # Option 5: Use user-defined list of genes
 psuper_sel      = psupertime(

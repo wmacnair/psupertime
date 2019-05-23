@@ -4,20 +4,22 @@
 \alias{psupertime}
 \title{Supervised pseudotime}
 \usage{
-psupertime(x, y, y_labels = NULL, sel_genes = "hvg",
-  gene_list = NULL, scale = TRUE, smooth = TRUE,
+psupertime(x, y, y_labels = NULL, assay_type = "logcounts",
+  sel_genes = "hvg", gene_list = NULL, scale = TRUE, smooth = TRUE,
   min_expression = 0.01, penalization = "1se",
   method = "proportional", score = "xentropy", n_folds = 5,
   test_propn = 0.1, lambdas = NULL, max_iters = 1000, seed = 1234)
 }
 \arguments{
-\item{x}{Either SingleCellExperiment class containing all cells and genes required, or matrix of log TPM values.}
+\item{x}{Either SingleCellExperiment object containing a matrix of genes * cells required, or a matrix of log TPM values (also genes * cells).}
 
 \item{y}{Vector of labels, which should have same length as number of columns in sce / x. Factor levels will be taken as the intended order for training.}
 
 \item{y_labels}{Alternative ordering of the labels in y. All labels must be present in y.}
 
-\item{sel_genes}{Method to be used to select interesting genes to be used in psupertime. Must be a string, with permitted values 'hvg', 'all', 'TF' and 'list', corresponding to: highly variable genes, all genes, transcription factors, and a user-selected list. If sel_genes='list', then the parameter gene_list must also be specified as input, containing the user-specified list of genes. sel_genes may alternatively be a list, itself, specifying the parameters to be used for selecting highly variable genes via scran, with names 'hvg_cutoff', 'bio_cutoff' (optionally also 'span').}
+\item{assay_type}{If a SingleCellExperiment object is used as input, specifies which assay is to be used.}
+
+\item{sel_genes}{Method to be used to select interesting genes to be used in psupertime. Must be a string, with permitted values 'hvg', 'all', 'tf_mouse', 'tf_human' and 'list', corresponding to: highly variable genes, all genes, transcription factors in mouse, transcription factors in human, and a user-selected list. If sel_genes='list', then the parameter gene_list must also be specified as input, containing the user-specified list of genes. sel_genes may alternatively be a list, itself, specifying the parameters to be used for selecting highly variable genes via scran, with names 'hvg_cutoff', 'bio_cutoff' (optionally also 'span').}
 
 \item{gene_list}{If sel_genes is specified as 'list', gene_list specifies the list of user-specified genes.}
 
