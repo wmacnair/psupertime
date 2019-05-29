@@ -2,6 +2,7 @@
 
 #' Convenience function to do multiple plots
 #'
+#' @importFrom ggplot2 ggsave
 #' @param psuper_obj Psupertime object, output from psupertime
 #' @param output_dir Directory to save to
 #' @param tag Label for all files
@@ -13,23 +14,23 @@ psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', label_name='
 	cat('plotting results\n')
 	g 			= plot_train_results(psuper_obj)
 	plot_file 	= file.path(output_dir, sprintf('%s training results.%s', tag, ext))
-	ggplot2::ggsave(plot_file, g, height=6, width=6)
+	ggsave(plot_file, g, height=6, width=6)
 
 	g 			= plot_labels_over_psupertime(psuper_obj, label_name)
 	plot_file 	= file.path(output_dir, sprintf('%s labels over psupertime.%s', tag, ext))
-	ggplot2::ggsave(plot_file, g, height=6, width=12)
+	ggsave(plot_file, g, height=6, width=12)
 
 	g 			= plot_identified_gene_coefficients(psuper_obj)
 	plot_file 	= file.path(output_dir, sprintf('%s identified genes.%s', tag, ext))
-	ggplot2::ggsave(plot_file, g, height=6, width=8)
+	ggsave(plot_file, g, height=6, width=8)
 
 	g 			= plot_identified_genes_over_psupertime(psuper_obj, label_name)
 	plot_file 	= file.path(output_dir, sprintf('%s identified genes over psupertime.%s', tag, ext))
-	ggplot2::ggsave(plot_file, g, height=8, width=12)
+	ggsave(plot_file, g, height=8, width=12)
 
 	g 			= plot_predictions_against_classes(psuper_obj)
 	plot_file 	= file.path(output_dir, sprintf('%s predictions over psupertime, original data.%s', tag, ext))
-	ggplot2::ggsave(plot_file, g, height=6, width=10)
+	ggsave(plot_file, g, height=6, width=10)
 }
 
 #' Plot results of training
@@ -132,6 +133,8 @@ plot_train_results <- function(psuper_obj) {
 
 #' Define RColorBrewer palette to use; default is RdBu.
 #'
+#' @importFrom RColorBrewer brewer.pal
+#' @importFrom grDevices colorRampPalette
 #' @param y_labels List of labels used for training
 #' @return Colour values
 #' @keywords internal
@@ -139,16 +142,16 @@ make_col_vals <- function(y_labels, palette='RdBu') {
 	n_labels 	= length(levels(y_labels))
 	max_col 	= 11
 	if (n_labels==1) {
-		col_vals 	= RColorBrewer::brewer.pal(3, palette)
+		col_vals 	= brewer.pal(3, palette)
 		col_vals 	= col_vals[1]
 	} else if (n_labels==2) {
-		col_vals 	= RColorBrewer::brewer.pal(3, palette)
+		col_vals 	= brewer.pal(3, palette)
 		col_vals 	= col_vals[-2]
 	} else if (n_labels<=max_col) {
-		col_vals 	= RColorBrewer::brewer.pal(n_labels, palette)
+		col_vals 	= brewer.pal(n_labels, palette)
 	} else {
-		col_pal 	= RColorBrewer::brewer.pal(max_col, palette)
-		col_vals 	= grDevices::colorRampPalette(col_pal)(n_labels)
+		col_pal 	= brewer.pal(max_col, palette)
+		col_vals 	= colorRampPalette(col_pal)(n_labels)
 	}
 	col_vals 	= rev(col_vals)
 
@@ -172,6 +175,7 @@ make_col_vals <- function(y_labels, palette='RdBu') {
 #' @importFrom ggplot2 scale_colour_manual
 #' @importFrom ggplot2 scale_fill_manual
 #' @importFrom ggplot2 scale_x_continuous
+#' @importFrom scales pretty_breaks
 plot_labels_over_psupertime <- function(psuper_obj, label_name='Ordered labels', palette='RdBu') {
 	# unpack
 	proj_dt 		= psuper_obj$proj_dt
@@ -191,7 +195,7 @@ plot_labels_over_psupertime <- function(psuper_obj, label_name='Ordered labels',
 			fill 	= guide_legend(override.aes = list(alpha=1))
 			,colour = FALSE
 			) +
-		scale_x_continuous( breaks=scales::pretty_breaks() ) +
+		scale_x_continuous( breaks=pretty_breaks() ) +
 		labs(
 			x 		= 'psupertime'
 			,y 		= 'Density'
@@ -217,6 +221,7 @@ plot_labels_over_psupertime <- function(psuper_obj, label_name='Ordered labels',
 #' @importFrom ggplot2 scale_y_continuous
 #' @importFrom ggplot2 theme
 #' @importFrom ggplot2 theme_bw
+#' @importFrom scales pretty_breaks
 plot_identified_gene_coefficients <- function(psuper_obj, n=20, abs_cutoff=0.05) {
 	# prepare plot
 	plot_dt 	= psuper_obj$beta_dt[ abs_beta > abs_cutoff ]
@@ -229,7 +234,7 @@ plot_identified_gene_coefficients <- function(psuper_obj, n=20, abs_cutoff=0.05)
 		geom_segment( colour='black' ) +
 		geom_point( colour='blue', size=5 ) +
 		# geom_hline( yintercept=0, colour='grey' ) +
-		scale_y_continuous( breaks=scales::pretty_breaks(), limits=c(-max_val, max_val) ) +
+		scale_y_continuous( breaks=pretty_breaks(), limits=c(-max_val, max_val) ) +
 		theme_bw() +
 		theme(
 			axis.text.x 	= element_text( angle=-45, hjust=0 )
@@ -249,6 +254,8 @@ plot_identified_gene_coefficients <- function(psuper_obj, n=20, abs_cutoff=0.05)
 #' @param palette RColorBrewer palette to use
 #' @return ggplot2 object
 #' @export
+#' @importFrom data.table data.table
+#' @importFrom data.table melt.data.table
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 element_blank
 #' @importFrom ggplot2 facet_wrap
@@ -262,6 +269,7 @@ plot_identified_gene_coefficients <- function(psuper_obj, n=20, abs_cutoff=0.05)
 #' @importFrom ggplot2 scale_y_continuous
 #' @importFrom ggplot2 theme
 #' @importFrom ggplot2 theme_bw
+#' @importFrom scales pretty_breaks
 plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordered labels', n_to_plot=20, palette='RdBu') {
 	# unpack
 	proj_dt 	= psuper_obj$proj_dt
@@ -275,8 +283,8 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 	top_genes 	= as.character(beta_nzero[1:min(n_to_plot, nrow(beta_nzero))]$symbol)
 
 	# set up data for plotting
-	plot_wide 	= cbind(proj_dt, data.table::data.table(x_data[, top_genes]))
-	plot_dt 	= data.table::melt.data.table(plot_wide, id=c('psuper', 'label_input', 'label_psuper'), variable.name='symbol')
+	plot_wide 	= cbind(proj_dt, data.table(x_data[, top_genes]))
+	plot_dt 	= melt.data.table(plot_wide, id=c('psuper', 'label_input', 'label_psuper'), variable.name='symbol')
 	plot_dt[, symbol := factor(symbol, levels=top_genes)]
 
 	# get colours
@@ -289,8 +297,8 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 		geom_smooth(se=FALSE, colour='black') +
 		scale_colour_manual( values=col_vals ) +
 		scale_shape_manual( values=c(1, 16) ) +
-		scale_x_continuous( breaks=scales::pretty_breaks() ) +
-		scale_y_continuous( breaks=scales::pretty_breaks() ) +
+		scale_x_continuous( breaks=pretty_breaks() ) +
+		scale_y_continuous( breaks=pretty_breaks() ) +
 		facet_wrap( ~ symbol, scales='free_y' ) +
 		theme_bw() +
 		theme(
@@ -312,6 +320,8 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 #' @param palette RColorBrewer palette to use
 #' @return ggplot2 object
 #' @internal
+#' @importFrom data.table melt.data.table
+#' @importFrom data.table setorder
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 element_blank
 #' @importFrom ggplot2 facet_wrap
@@ -325,6 +335,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 #' @importFrom ggplot2 scale_y_continuous
 #' @importFrom ggplot2 theme
 #' @importFrom ggplot2 theme_bw
+#' @importFrom scales pretty_breaks
 plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_name='Ordered labels', palette='RdBu') {
 	stop('not implemented yet')
 	# get smoothed data across all genes
@@ -333,9 +344,9 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_
 	# restrict to just this set
 	extra_genes = intersect(extra_genes, colnames(x_all))
 	plot_wide 	= cbind(proj_dt, data.table(x_all[, extra_genes]))
-	plot_dt 	= data.table::melt.data.table(plot_wide, id=c('psuper', 'label_input', 'label_psuper'), variable.name='symbol')
+	plot_dt 	= melt.data.table(plot_wide, id=c('psuper', 'label_input', 'label_psuper'), variable.name='symbol')
 	corrs_dt 	= plot_dt[, list(abs_cor = abs(cor(psuper, value))), by=symbol]
-	data.table::setorder(corrs_dt, -abs_cor)
+	setorder(corrs_dt, -abs_cor)
 	plot_dt[, symbol := factor(symbol, levels=corrs_dt$symbol)]
 
 	# set up plot
@@ -353,8 +364,8 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_
 		geom_smooth(se=FALSE, colour='black') +
 		scale_colour_manual( values=col_vals ) +
 		scale_shape_manual( values=c(1, 16) ) +
-		scale_x_continuous( breaks=scales::pretty_breaks() ) +
-		scale_y_continuous( breaks=scales::pretty_breaks() ) +
+		scale_x_continuous( breaks=pretty_breaks() ) +
+		scale_y_continuous( breaks=pretty_breaks() ) +
 		facet_wrap( ~ symbol, scales='free_y', nrow=nrow, ncol=ncol ) +
 		theme_bw() +
 		theme(
@@ -425,6 +436,7 @@ project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL, process=
 #' @param palette RColorBrewer palette to use
 #' @return ggplot2 object
 #' @export
+#' @importFrom cowplot plot_grid
 #' @importFrom ggplot2 ggplot
 #' @importFrom ggplot2 aes_string
 #' @importFrom ggplot2 geom_raster
@@ -432,6 +444,7 @@ project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL, process=
 #' @importFrom ggplot2 expand_limits
 #' @importFrom ggplot2 labs
 #' @importFrom ggplot2 theme_bw
+#' @importFrom scales pretty_breaks
 plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, labels=c('Original', 'New data'), palette='BrBG', process=FALSE) {
 	# project new data
 	proj_new 	= project_onto_psupertime(psuper_obj, new_x, new_y, process)
@@ -456,7 +469,7 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, labels=c('Or
 			fill 	= guide_legend(override.aes = list(alpha=1))
 			,colour = FALSE
 			) +
-		scale_x_continuous( breaks=scales::pretty_breaks() ) +
+		scale_x_continuous( breaks=pretty_breaks() ) +
 		labs(
 			x 		= x_label
 			,y 		= 'Density'
@@ -474,7 +487,7 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, labels=c('Or
 	g2 			= g2 + coord_cartesian( xlim=x_range )
 
 	# put into grid
-	g			= cowplot::plot_grid(plotlist=list(g1, g2), labels=NULL, nrow=2, ncol=1, align='v', axis='lr')
+	g			= plot_grid(plotlist=list(g1, g2), labels=NULL, nrow=2, ncol=1, align='v', axis='lr')
 
 	return(g)
 }
@@ -502,6 +515,7 @@ check_conf_params <- function(plot_var) {
 #' @param palette RColorBrewer palette to use
 #' @return ggplot2 object
 #' @export
+#' @importFrom data.table data.table
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 expand_limits
 #' @importFrom ggplot2 geom_text
@@ -511,6 +525,7 @@ check_conf_params <- function(plot_var) {
 #' @importFrom ggplot2 scale_fill_distiller
 #' @importFrom ggplot2 scale_x_discrete
 #' @importFrom ggplot2 theme_bw
+#' @importFrom scales pretty_breaks
 plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL, plot_var='prop_true', palette='BuPu') {
 	# decide what to plot
 	conf_params 	= check_conf_params(plot_var)
@@ -561,7 +576,7 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 	# get predicted classes for each thing
 	predictions 	= predict_glmnetcr_propodds(glmnet_best, x_in, y_in)
 	pred_classes 	= factor(predictions$class[, which_idx], levels=levels(psuper_obj$y))
-	predict_dt 		= data.table::data.table( predicted=pred_classes, true=y_in )
+	predict_dt 		= data.table( predicted=pred_classes, true=y_in )
 
 	# count and average
 	counts_dt 		= predict_dt[, .N, by=list(predicted, true)]
@@ -578,7 +593,7 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 		geom_tile(data=borders_dt, aes(y=true, x=predicted), fill=NA, colour='black', size=0.5) +
 		geom_text( aes(label=N) ) +
 		scale_x_discrete( drop=FALSE ) +
-		scale_fill_distiller( palette=palette, direction=1, breaks=scales::pretty_breaks() )
+		scale_fill_distiller( palette=palette, direction=1, breaks=pretty_breaks() )
 	if (plot_var=='N') {
 		g = g + expand_limits( fill=0 )
 	} else {
@@ -595,6 +610,7 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 
 #' Projects two different psupertimes onto each other
 #'
+#' @importFrom forcats fct_drop
 #' @param psuper_1, psuper_2 Two previously calculated psupertime objects
 #' @param labels Character vector of length two, labelling the psupertime inputs
 #' @return data.table containing projections in both directions
@@ -793,6 +809,7 @@ plot_double_psupertime_contour <- function(double_obj, psuper_1=NULL, psuper_2=N
 #' @param run_names Character vector of length two, labelling the psupertime inputs
 #' @return ggplot object plotting the two sets of coefficients
 #' @export
+#' @importFrom data.table setnames
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 geom_point
@@ -813,9 +830,9 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 	# get genes from both
 	old_names 	= c('beta', 'abs_beta')
 	genes_1_dt 	= psuper_1$beta_dt[ abs_beta > 0 ]
-	data.table::setnames(genes_1_dt, old_names, paste0(old_names, '_1'))
+	setnames(genes_1_dt, old_names, paste0(old_names, '_1'))
 	genes_2_dt 	= psuper_2$beta_dt[ abs_beta > 0 ]
-	data.table::setnames(genes_2_dt, old_names, paste0(old_names, '_2'))
+	setnames(genes_2_dt, old_names, paste0(old_names, '_2'))
 
 	# join together, tidy up
 	genes_dt 	= merge(genes_1_dt, genes_2_dt, by='symbol', all=TRUE, )
@@ -845,6 +862,8 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 #' @param palette RColorBrewer palette to use
 #' @return cowplot plot_grid object, showing known and predicted labels for each dataset, and each set of predictions
 #' @export
+#' @importFrom cowplot plot_grid
+#' @importFrom forcats fct_drop
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 aes_string
 #' @importFrom ggplot2 expand_limits
@@ -855,6 +874,7 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 #' @importFrom ggplot2 scale_fill_distiller
 #' @importFrom ggplot2 scale_x_discrete
 #' @importFrom ggplot2 theme_bw
+#' @importFrom scales pretty_breaks
 plot_double_psupertime_confusion <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run_names=NULL, plot_var='prop_true', palette='BuPu') {
 	if ( !requireNamespace("cowplot", quietly=TRUE) ) {
 		message('cowplot not installed; not plotting confusion matrix')
@@ -903,9 +923,9 @@ plot_double_psupertime_confusion <- function(double_obj, psuper_1=NULL, psuper_2
 			counts_dt[, prop_predict 	:= N / sum(N), 	by=label_psuper ]
 
 			# tidy up labels
-			counts_dt[, label_input 	:= forcats::fct_drop(label_input) ]
+			counts_dt[, label_input 	:= fct_drop(label_input) ]
 			counts_dt[, label_input 	:= factor(label_input, levels=levels_list[[input_ii]])]
-			counts_dt[, label_psuper 	:= forcats::fct_drop(label_psuper) ]
+			counts_dt[, label_psuper 	:= fct_drop(label_psuper) ]
 			counts_dt[, label_psuper 	:= factor(label_psuper, levels=levels_list[[psuper_jj]])]
 
 			# define where borders should be
@@ -918,7 +938,7 @@ plot_double_psupertime_confusion <- function(double_obj, psuper_1=NULL, psuper_2
 				geom_tile(data=borders_dt, aes(y=label_input, x=label_psuper), fill=NA, colour='black', size=0.5) +
 				geom_text( aes(label=N) ) +
 				scale_x_discrete( drop=FALSE ) +
-				scale_fill_distiller( palette=palette, direction=1, breaks=scales::pretty_breaks(), guide=FALSE ) +
+				scale_fill_distiller( palette=palette, direction=1, breaks=pretty_breaks(), guide=FALSE ) +
 				theme_bw()
 
 			# colouring for tiles
@@ -944,13 +964,17 @@ plot_double_psupertime_confusion <- function(double_obj, psuper_1=NULL, psuper_2
 		}
 	}
 
-	g_grid 			= cowplot::plot_grid(plotlist=g_list, labels=NULL, nrow=n_inputs, ncol=n_projs, align='h', axis='b')
+	g_grid 			= plot_grid(plotlist=g_list, labels=NULL, nrow=n_inputs, ncol=n_projs, align='h', axis='b')
 
 	return(g_grid)
 }
 
 #' GO enrichment analysis for genes learned from different psupertimes
 #'
+#' @importFrom data.table data.table
+#' @importFrom data.table setnames
+#' @importFrom topGO runTest
+#' @importFrom topGO GenTable
 #' @param psuper_obj A previously calculated psupertime object
 #' @param org_mapping Organism to use for annotations (e.g. 'org.Mm.eg.db', 'org.Hs.eg.db')
 #' @return data.table containing results of GO enrichment analysis
@@ -977,7 +1001,7 @@ psupertime_go_analysis_old <- function(psuper_obj, org_mapping) {
 	p_vals 			= 2*(1 - pt(abs(t_stat),(n_obs-2)))
 
 	# do GO in various ways
-	go_dt 			= data.table::data.table()
+	go_dt 			= data.table()
 	for (up_or_down in c('both', 'up', 'down')) {
 		# do ranking
 		if (up_or_down=='both') {
@@ -1008,14 +1032,14 @@ psupertime_go_analysis_old <- function(psuper_obj, org_mapping) {
 			)
 
 		# run enrichment tests on these, extract results
-		go_weight 	= topGO::runTest(topGO_data, algorithm = "weight01", statistic = "fisher")
-		go_temp 	= data.table::data.table(topGO::GenTable(topGO_data, 
+		go_weight 	= runTest(topGO_data, algorithm = "weight01", statistic = "fisher")
+		go_temp 	= data.table(GenTable(topGO_data, 
 			p_go 	= go_weight, 
 			orderBy 		= 'p_go', 
 			ranksOf 		= 'p_go', 
 			topNodes 		= 1000
 			))
-		data.table::setnames(go_temp, 'p_go', 'temp')
+		setnames(go_temp, 'p_go', 'temp')
 		go_temp[, p_go := as.numeric(temp) ]
 		go_temp[ temp == '< 1e-30', p_go := 9e-31 ]
 		go_temp[, temp := NULL ]
@@ -1044,6 +1068,9 @@ psupertime_go_analysis_old <- function(psuper_obj, org_mapping) {
 
 #' GO enrichment analysis for genes learned from different psupertimes
 #'
+#' @importFrom data.table set
+#' @importFrom data.table setorder
+#' @importFrom fastcluster hclust
 #' @param psuper_obj A previously calculated psupertime object
 #' @param org_mapping Organism to use for annotations (e.g. 'org.Mm.eg.db', 'org.Hs.eg.db')
 #' @return data.table containing results of GO enrichment analysis
@@ -1068,8 +1095,8 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping, k=5, sig_cutoff=5) {
 
 	# put cells in nice order, label projections
 	rownames(x_data) 		= sprintf('cell_%04d', 1:nrow(x_data))
-	data.table::set(proj_dt, i=NULL, 'cell_id', rownames(x_data))
-	data.table::setorder(proj_dt, psuper)
+	set(proj_dt, i=NULL, 'cell_id', rownames(x_data))
+	setorder(proj_dt, psuper)
 
 	# do clustering on symbols
 	message('clustering genes')
@@ -1212,6 +1239,7 @@ make_plot_dt <- function(x_data, hclust_obj, proj_dt, clusters_dt) {
 #' @param p_cutoff What is the maximum p-value to display a GO term?
 #' @return bar plot
 #' @export
+#' @importFrom data.table setorder
 #' @importFrom ggplot2 ggplot
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 geom_col
@@ -1220,13 +1248,14 @@ make_plot_dt <- function(x_data, hclust_obj, proj_dt, clusters_dt) {
 #' @importFrom ggplot2 scale_y_continuous
 #' @importFrom ggplot2 labs
 #' @importFrom ggplot2 theme_bw
+#' @importFrom scales pretty_breaks
 plot_go_results <- function(go_list, sig_cutoff=5, p_cutoff=0.1) {
 	# unpack
 	go_results 	= go_list$go_results
 
 	# set up
 	plot_dt 	= go_results[ Significant>=sig_cutoff & p_go<p_cutoff ]
-	data.table::setorder(plot_dt, cluster, -p_go)
+	setorder(plot_dt, cluster, -p_go)
 	plot_dt[, N := .N, by=Term ]
 	plot_dt[	  , term_n := Term ]
 	plot_dt[ N > 1, term_n := paste0(Term, '_', 1:.N), by=Term ]
@@ -1236,7 +1265,7 @@ plot_go_results <- function(go_list, sig_cutoff=5, p_cutoff=0.1) {
 	g = ggplot(plot_dt) +
 		aes( x=term_n, y=-log10(p_go) ) +
 		geom_col() +
-		scale_y_continuous( breaks=scales::pretty_breaks() ) +
+		scale_y_continuous( breaks=pretty_breaks() ) +
 		facet_grid( cluster ~ ., scales='free_y', space='free_y') +
 		coord_flip() +
 		labs(

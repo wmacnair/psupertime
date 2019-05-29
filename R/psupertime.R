@@ -66,6 +66,7 @@ psupertime <- function(x, y, y_labels=NULL, assay_type='logcounts',
 
 #' check all parameters
 #'
+#' @importFrom SummarizedExperiment assays
 #' @return list of validated parameters
 #' @keywords internal
 check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale, smooth, min_expression, 
@@ -75,7 +76,7 @@ check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale
 		stop('x must be either a SingleCellExperiment or a matrix of log counts')
 	}
 	if ( class(x)=='SingleCellExperiment') {
-		if ( !(assay_type %in% names(SummarizedExperiment::assays(x))) ) {
+		if ( !(assay_type %in% names(assays(x))) ) {
 			stop(paste0('SingleCellExperiment x does not contain the specified assay, ', assay_type))
 		}
 	} else {
@@ -215,6 +216,7 @@ check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale
 
 #' Select genes for use in regression
 #'
+#' @importFrom SingleCellExperiment SingleCellExperiment
 #' @param x SingleCellExperiment class containing all cells and genes required, or matrix of counts
 #' @param params List of all parameters specified.
 #' @keywords internal
@@ -225,7 +227,7 @@ select_genes <- function(x, params) {
 		if ( class(x)=='SingleCellExperiment' ) {
 			sce 		= x
 		} else if ( class(x) %in% c('matrix', 'dgCMatrix', 'dgRMatrix') ) {
-			sce 		= SingleCellExperiment::SingleCellExperiment(assays = list(logcounts = x))
+			sce 		= SingleCellExperiment(assays = list(logcounts = x))
 		} else { stop('class of x must be either matrix or SingleCellExperiment') }
 
 		# calculate selected genes
@@ -283,6 +285,7 @@ select_genes <- function(x, params) {
 #' @importFrom ggplot2 labs
 #' @importFrom scran trendVar
 #' @importFrom scran decomposeVar
+#' @importFrom SummarizedExperiment assay
 #' @keywords internal
 calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	message('identifying highly variable genes')
@@ -290,9 +293,8 @@ calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	if (!(assay_type %in% names(assays(sce)))) {
 		stop('to calculate highly variable genes (HVGs) with scran, x must contain the assay "logcounts"')
 	}
-	# var_fit 		= scran::trendVar(sce, assay.type=assay_type, method="loess", use.spikes=FALSE, span=0.1)
 	span 			= ifelse(is.null(params$span), 0.1, params$span)
-	var_fit 		= trendVar(SummarizedExperiment::assay(sce, assay_type), method="loess", loess.args=list(span=span))
+	var_fit 		= trendVar(assay(sce, assay_type), method="loess", loess.args=list(span=span))
 	var_out 		= decomposeVar(sce, var_fit, assay.type=assay_type)
 
 	# plot trends identified
@@ -327,6 +329,7 @@ calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 #' @param x SingleCellExperiment class containing all cells and genes required
 #' @param params List of all parameters specified.
 #' @importFrom Matrix rowMeans
+#' @importFrom SummarizedExperiment assay
 #' @keywords internal
 calc_expressed_genes <- function(x, params) {
 	# check whether necessary
@@ -336,7 +339,7 @@ calc_expressed_genes <- function(x, params) {
 
 	# otherwise calculate it
 	if ( class(x)=='SingleCellExperiment' ) {
-		x_mat 		= SummarizedExperiment::assay(x, 'logcounts')
+		x_mat 		= assay(x, 'logcounts')
 	} else if ( class(x) %in% c('matrix', 'dgCMatrix', 'dgCMatrix') ) {
 		x_mat 		= x
 	} else { stop('x must be either SingleCellExperiment or (possibly sparse) matrix') }
@@ -348,25 +351,29 @@ calc_expressed_genes <- function(x, params) {
 
 #' Get list of transcription factors
 #'
+#' @importFrom data.table fread
 #' @return List of all transcription factors specified.
 #' @keywords internal
 get_tf_list <- function(dirs) {
 	tf_path 		= file.path(dirs$data_root, 'fgcz_annotations', 'tf_list.txt')
-	tf_full 		= data.table::fread(tf_path)
+	tf_full 		= fread(tf_path)
 	tf_list 		= tf_full$symbol
 	return(tf_list)
 }
 
+#' @importFrom data.table setnames
+#' @importFrom stringr str_replace_all
+#' @importFrom stringr str_detect
 #' @keywords internal
 get_go_list <- function(dirs) {
 	stop('not implemented yet')
 	lookup_path 	= file.path(dirs$data_root, 'fgcz_annotations', 'genes_annotation_byGene.txt')
 	ensembl_dt 		= fread(lookup_path)
 	old_names 		= names(ensembl_dt)
-	new_names 		= stringr::str_replace_all(old_names, ' ', '_')
-	data.table::setnames(ensembl_dt, old_names, new_names)
+	new_names 		= str_replace_all(old_names, ' ', '_')
+	setnames(ensembl_dt, old_names, new_names)
 	tf_term 		= 'GO:0003700'
-	tf_full 		= ensembl_dt[ stringr::str_detect(GO_MF, tf_term) ]
+	tf_full 		= ensembl_dt[ str_detect(GO_MF, tf_term) ]
 	tf_list 		= tf_full[, list(symbol=gene_name, description)]
 
 	return(tf_list)
@@ -377,13 +384,16 @@ get_go_list <- function(dirs) {
 #' @param sel_genes Selected genes
 #' @param params Full list of parameters
 #' @importFrom Matrix t
+#' @importFrom stringr str_detect
+#' @importFrom stringr str_replace_all
+#' @importFrom SummarizedExperiment assay
 #' @return Matrix of dimension # cells by # selected genes
 #' @keywords internal
 make_x_data <- function(x, sel_genes, params) {
 	message('processing data')
 	# get matrix
 	if ( class(x)=='SingleCellExperiment' ) {
-		x_data 		= SummarizedExperiment::assay(x, params$assay_type)
+		x_data 		= assay(x, params$assay_type)
 	} else if (class(x) %in% c('matrix', 'dgCMatrix', 'dgRMatrix')) {
 		x_data 		= x
 	} else {
@@ -405,8 +415,7 @@ make_x_data <- function(x, sel_genes, params) {
 
 	# exclude any genes with zero SD
 	message('    checking for zero SD genes')
-	col_sd 		= base::apply(x_data, 2, sd)
-	# col_sd 		= matrixStats::colSds(x_data)
+	col_sd 		= apply(x_data, 2, sd)
 	sd_0_idx 	= col_sd==0
 	if ( sum(sd_0_idx)>0 ) {
 		message('\nthe following genes have zero SD and are removed:')
@@ -447,13 +456,13 @@ make_x_data <- function(x, sel_genes, params) {
 
 	# make all gene names nice
 	old_names 			= colnames(x_data)
-	hyphen_idx 			= stringr::str_detect(old_names, '-')
+	hyphen_idx 			= str_detect(old_names, '-')
 	if (any(hyphen_idx)) {
 		message('    hyphens detected in the following gene names:')
 		message('        ', appendLF=FALSE)
 		message(paste(old_names[hyphen_idx], collapse=', '))
 		message('    these have been replaced with .s')
-		new_names 			= stringr::str_replace_all(old_names, '-', '.')
+		new_names 			= str_replace_all(old_names, '-', '.')
 		colnames(x_data) 	= new_names
 	}
 
@@ -486,6 +495,7 @@ get_fold_list <- function(y_train, params) {
 	return(fold_list)
 }
 
+#' @importFrom data.table data.table
 #' @keywords internal
 train_on_folds <- function(x_train, y_train, fold_list, params) {
 	message(sprintf('cross-validation training, %d folds:', params$n_folds))
@@ -496,7 +506,7 @@ train_on_folds <- function(x_train, y_train, fold_list, params) {
 	method 			= params$method
 
 	# loop
-	scores_dt 		= data.table::data.table()
+	scores_dt 		= data.table()
 	for (kk in 1:n_folds) {
 		message(sprintf('    fold %d', kk))
 
@@ -526,6 +536,7 @@ train_on_folds <- function(x_train, y_train, fold_list, params) {
 	return(scores_dt)
 }
 
+#' @importFrom glmnet glmnet
 #' @keywords internal
 glmnetcr_propn <- function(x, y, method = "proportional", weights = NULL, offset = NULL, 
     alpha = 1, nlambda = 100, lambda.min.ratio = NULL, lambda = NULL, 
@@ -557,7 +568,7 @@ glmnetcr_propn <- function(x, y, method = "proportional", weights = NULL, offset
     }
     glmnet.data <- list(x = restructure[, -c(1, 2)], y = restructure[, 
         "y"], weights = restructure[, "weights"])
-    object <- glmnet::glmnet(glmnet.data$x, glmnet.data$y, family = "binomial", 
+    object <- glmnet(glmnet.data$x, glmnet.data$y, family = "binomial", 
         weights = glmnet.data$weights, offset = offset, alpha = alpha, 
         nlambda = nlambda, lambda.min.ratio = lambda.min.ratio, 
         lambda = lambda, standardize = standardize, thresh = thresh, 
@@ -597,6 +608,7 @@ restructure_propodds <- function(x, y, weights) {
 	newx
 }
 
+#' @importFrom stringr str_detect
 #' @keywords internal
 predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 	if (is.null(newx)) {
@@ -617,7 +629,7 @@ predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 
 	# split betas into cutpoints, gene coefficients
 	beta_genes 	= rownames(beta.est)
-	cut_idx 	= stringr::str_detect(beta_genes, '^cp[0-9]+$')
+	cut_idx 	= str_detect(beta_genes, '^cp[0-9]+$')
 	coeff_cuts 	= beta.est[cut_idx, ]
 	coeff_genes = beta.est[!cut_idx, ]
 
@@ -774,6 +786,7 @@ predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 	list(BIC=glmnet.BIC, AIC=glmnet.AIC, class=class, probs=pi, LL=LL, LL_mat=LL_mat)
 }
 
+#' @importFrom data.table data.table
 #' @keywords internal
 calc_scores_for_one_fit <- function(glmnet_fit, x_valid, y_valid) {
 	# get predictions
@@ -792,7 +805,7 @@ calc_scores_for_one_fit <- function(glmnet_fit, x_valid, y_valid) {
 		function(jj) calc_multiple_scores(pred_classes[,jj], probs[,,jj], y_valid, class_levels)
 		)
 	# store results
-	scores_wide 	= data.table::data.table(
+	scores_wide 	= data.table(
 		lambda 			= lambdas
 		,t(scores_mat)
 		)
@@ -908,13 +921,15 @@ make_scores_dt <- function(glmnet_best, x_test, y_test, scores_train) {
 	return(scores_dt)
 }
 
+#' @importFrom data.table data.table
+#' @importFrom stringr str_detect
 #' @keywords internal
 calc_proj_dt <- function(glmnet_best, x_data, y_labels, best_lambdas) {
 	# unpack
 	which_idx 		= best_lambdas$which_idx
 
 	# get best one
-	cut_idx 		= stringr::str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
+	cut_idx 		= str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
 	beta_best 		= glmnet_best$beta[!cut_idx, which_idx]
 
 	# remove any missing genes if necessary
@@ -938,42 +953,41 @@ calc_proj_dt <- function(glmnet_best, x_data, y_labels, best_lambdas) {
 	pred_classes 	= factor(predictions$class[, which_idx], levels=levels(glmnet_best$y))
 
 	# put into data.table
-	proj_dt 	= data.table::data.table(
+	proj_dt 	= data.table(
 		psuper 			= psuper[, 1]
 		,label_input 	= y_labels
 		,label_psuper 	= pred_classes
 		)
-	# proj_dt 	= data.table::data.table(
-	# 	y_proj 		= y_proj[, 1]
-	# 	,y_label 	= y_labels
-	# 	,test 		= ifelse(test_idx, 'Test', 'Train')
-	# 	)
-	# proj_dt[, test := factor(test, levels=c('Train', 'Test'))]
 
 	return(proj_dt)
 }
 
 #' Extracts best coefficients.
 #' 
+#' @importFrom data.table data.table
+#' @importFrom data.table setorder
+#' @importFrom stringr str_detect
 #' @return data.table containing learned coefficients for all genes used as input.
 #' @keywords internal
 make_best_beta <- function(glmnet_best, best_lambdas) {
-	cut_idx 	= stringr::str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
+	cut_idx 	= str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
 	best_beta 	= glmnet_best$beta[!cut_idx, best_lambdas$which_idx]
-	beta_dt 	= data.table::data.table( beta=best_beta, symbol=names(best_beta) )
+	beta_dt 	= data.table( beta=best_beta, symbol=names(best_beta) )
 	beta_dt[, abs_beta := abs(beta) ]
-	data.table::setorder(beta_dt, -abs_beta)
+	setorder(beta_dt, -abs_beta)
 	beta_dt[, symbol:=factor(symbol, levels=beta_dt$symbol)]
 		
 	return(beta_dt)
 }
 
+#' @importFrom data.table data.table
+#' @importFrom stringr str_detect
 #' @keywords internal
 make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, proj_dt, beta_dt, best_lambdas, best_dt, scores_dt, params) {
 	# make cuts_dt
 	which_idx 	= best_lambdas$which_idx
-	cut_idx 	= stringr::str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
-	cuts_dt 	= data.table::data.table(
+	cut_idx 	= str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
+	cuts_dt 	= data.table(
 		psuper 			= c(NA, -(glmnet_best$beta[ cut_idx, which_idx ] + glmnet_best$a0[[ which_idx ]]))
 		,label_input 	= factor(levels(proj_dt$label_input), levels=levels(proj_dt$label_input))
 		)
@@ -1046,8 +1060,9 @@ print.psupertime <- function(psuper_obj) {
 	cat(psummary)
 }
 
+#' @importFrom knitr asis_output
 #' @keywords internal
 knit_print.psupertime = function(psuper_obj, ...) {
 	psummary 	= psummarize(psuper_obj)
-	knitr::asis_output(psummary)
+	asis_output(psummary)
 }
