@@ -71,14 +71,14 @@ psupertime <- function(x, y, y_labels=NULL, assay_type='logcounts',
 check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale, smooth, min_expression, 
 	penalization, method, score, n_folds, test_propn, lambdas, max_iters, seed) {
 	# check input data looks ok
-	if (!(class(x) %in% c('SingleCellExperiment', 'matrix'))) {
+	if (!(class(x) %in% c('SingleCellExperiment', 'matrix', 'dgCMatrix', 'dgRMatrix'))) {
 		stop('x must be either a SingleCellExperiment or a matrix of log counts')
 	}
 	if ( class(x)=='SingleCellExperiment') {
 		if ( !(assay_type %in% names(SummarizedExperiment::assays(x))) ) {
 			stop(paste0('SingleCellExperiment x does not contain the specified assay, ', assay_type))
 		}
-	} else if ( is.matrix(x) & is.numeric(x) ) {
+	} else {
 		if ( is.null(rownames(x)) ) {
 			stop('row names of x must be given, as gene names')
 		}
@@ -224,7 +224,7 @@ select_genes <- function(x, params) {
 	if ( sel_genes=='hvg' ) {
 		if ( class(x)=='SingleCellExperiment' ) {
 			sce 		= x
-		} else if ( class(x)=='matrix' ) {
+		} else if ( class(x) %in% c('matrix', 'dgCMatrix', 'dgRMatrix') ) {
 			sce 		= SingleCellExperiment::SingleCellExperiment(assays = list(logcounts = x))
 		} else { stop('class of x must be either matrix or SingleCellExperiment') }
 
@@ -272,6 +272,7 @@ select_genes <- function(x, params) {
 #' @param x SingleCellExperiment class or matrix of log counts
 #' @param params List of all parameters specified.
 #' @import data.table
+#' @importFrom data.table setorder
 #' @importFrom ggplot2 ggplot
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 geom_bin2d
@@ -280,6 +281,8 @@ select_genes <- function(x, params) {
 #' @importFrom ggplot2 scale_fill_distiller
 #' @importFrom ggplot2 theme_light
 #' @importFrom ggplot2 labs
+#' @importFrom scran trendVar
+#' @importFrom scran decomposeVar
 #' @keywords internal
 calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	message('identifying highly variable genes')
@@ -289,13 +292,13 @@ calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	}
 	# var_fit 		= scran::trendVar(sce, assay.type=assay_type, method="loess", use.spikes=FALSE, span=0.1)
 	span 			= ifelse(is.null(params$span), 0.1, params$span)
-	var_fit 		= scran::trendVar(SummarizedExperiment::assay(sce, assay_type), method="loess", loess.args=list(span=span))
-	var_out 		= scran::decomposeVar(sce, var_fit, assay.type=assay_type)
+	var_fit 		= trendVar(SummarizedExperiment::assay(sce, assay_type), method="loess", loess.args=list(span=span))
+	var_out 		= decomposeVar(sce, var_fit, assay.type=assay_type)
 
 	# plot trends identified
 	var_dt 			= as.data.table(var_out)
 	var_dt 			= var_dt[, symbol:=rownames(var_out) ]
-	data.table::setorder(var_dt, mean)
+	setorder(var_dt, mean)
 	if (do_plot) {
 		g 	= ggplot(var_dt[ mean>0.5 ]) +
 			aes( x=mean, y=total ) +
@@ -313,7 +316,7 @@ calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 
 	# restrict to highly variable genes
 	hvg_dt 			= var_dt[ FDR <= params$hvg_cutoff & bio >= params$bio_cutoff ]
-	data.table::setorder(hvg_dt, -bio)
+	setorder(hvg_dt, -bio)
 	sel_genes 		= hvg_dt$symbol
 
 	return(sel_genes)
@@ -323,6 +326,7 @@ calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 #'
 #' @param x SingleCellExperiment class containing all cells and genes required
 #' @param params List of all parameters specified.
+#' @importFrom Matrix rowMeans
 #' @keywords internal
 calc_expressed_genes <- function(x, params) {
 	# check whether necessary
@@ -333,9 +337,9 @@ calc_expressed_genes <- function(x, params) {
 	# otherwise calculate it
 	if ( class(x)=='SingleCellExperiment' ) {
 		x_mat 		= SummarizedExperiment::assay(x, 'logcounts')
-	} else if ( class(x)=='matrix' ) {
+	} else if ( class(x) %in% c('matrix', 'dgCMatrix', 'dgCMatrix') ) {
 		x_mat 		= x
-	} else { stop('x must be either SingleCellExperiment or matrix') }
+	} else { stop('x must be either SingleCellExperiment or (possibly sparse) matrix') }
 	prop_expressed 	= rowMeans( x_mat>0 )
 	expressed_genes = names(prop_expressed[ prop_expressed>params$min_expression ])
 
@@ -372,18 +376,22 @@ get_go_list <- function(dirs) {
 #' @param x SingleCellExperiment or matrix of log counts
 #' @param sel_genes Selected genes
 #' @param params Full list of parameters
+#' @importFrom Matrix t
 #' @return Matrix of dimension # cells by # selected genes
 #' @keywords internal
 make_x_data <- function(x, sel_genes, params) {
 	message('processing data')
 	# get matrix
 	if ( class(x)=='SingleCellExperiment' ) {
-		x_data 		= t(SummarizedExperiment::assay(x, params$assay_type))
-	} else if ( class(x)=='matrix' ) {
-		x_data 		= t(x)
+		x_data 		= SummarizedExperiment::assay(x, params$assay_type)
+	} else if (class(x) %in% c('matrix', 'dgCMatrix', 'dgRMatrix')) {
+		x_data 		= x
 	} else {
 		stop('x must be either a SingleCellExperiment or a matrix of counts')
 	}
+
+	# transpose
+	x_data 		= t(x_data)
 
 	# check if any genes missing, restrict to selected genes
 	all_genes 		= colnames(x_data)
@@ -417,7 +425,7 @@ make_x_data <- function(x, sel_genes, params) {
 
 		# calculate correlations between all cells
 		x_t 			= t(x_data)
-		cor_mat 		= cor(x_t)
+		cor_mat 		= cor(as.matrix(x_t))
 
 		# each column is ranked list of nearest neighbours of the column cell
 		nhbr_mat 		= apply(-cor_mat, 1, rank, ties.method='random')
