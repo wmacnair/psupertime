@@ -679,9 +679,13 @@ predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 		# do inverse logit
 		delta 		= matrix(rep(0, n * (k - 1)), ncol = k - 1)
 		for (j in 1:(k - 1)) {
-			delta[, j] 	= exp(logit[, j])/(1 + exp(logit[, j]))
+			exp_val 	= exp(logit[, j])
+			delta[, j] 	= exp_val/(1 + exp_val)
+			# check no infinite values
+			if ( any(exp_val==Inf) ) {
+				delta[exp_val==Inf, j] 	= 1 - 1e-16
+			}
 		}
-		# delta 		= exp(logit)/(1 + exp(logit))
 		minus.delta = 1 - delta
 		if (method == "backward") {
 			for (j in k:2) {
@@ -839,7 +843,16 @@ calc_multiple_scores <- function(pred_classes, probs, y_valid, class_levels) {
 
 #' @keywords internal
 xentropy_fn <- function(p_mat, bin_mat) {
-	return( -rowSums(bin_mat * log2(p_mat), na.rm=TRUE) )
+	# calculate standard xentropy values
+	xentropy 	= -rowSums(bin_mat * log2(p_mat), na.rm=TRUE)
+
+	# deal with any -Inf values
+	inf_idx 	= xentropy==Inf
+	if ( sum(inf_idx) ) {
+		xentropy[inf_idx] 	= -log2(1e-16)
+	}
+
+	return( xentropy )
 }
 
 #' @keywords internal
