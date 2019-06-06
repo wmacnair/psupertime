@@ -8,9 +8,9 @@ plot_specified_genes_over_psupertime(psuper_obj, extra_genes,
   label_name = "Ordered labels", palette = "RdBu")
 }
 \arguments{
-\item{psuper_obj}{Psupertime object, output from psupertime}
+\item{psuper_obj}{psupertime object, output from psupertime}
 
-\item{extra_genes}{}
+\item{extra_genes}{List of genes to be plotted (these must be in the set of genes used for calculating psupertime, e.g. highly variable genes)}
 
 \item{label_name}{Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')}
 

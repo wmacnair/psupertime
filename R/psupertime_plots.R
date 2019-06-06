@@ -314,14 +314,14 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 
 #' Plots profiles of hand-selected genes against psupertime.
 #'
-#' @param psuper_obj Psupertime object, output from psupertime
-#' @param extra_genes 
+#' @param psuper_obj psupertime object, output from psupertime
+#' @param extra_genes List of genes to be plotted (these must be in the set of genes used for calculating psupertime, e.g. highly variable genes)
 #' @param label_name Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')
 #' @param palette RColorBrewer palette to use
 #' @return ggplot2 object
-#' @internal
+#' @export
+#' @importFrom data.table data.table
 #' @importFrom data.table melt.data.table
-#' @importFrom data.table setorder
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 element_blank
 #' @importFrom ggplot2 facet_wrap
@@ -330,24 +330,29 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 #' @importFrom ggplot2 ggplot
 #' @importFrom ggplot2 labs
 #' @importFrom ggplot2 scale_colour_manual
-#' @importFrom ggplot2 scale_shape_manual
 #' @importFrom ggplot2 scale_x_continuous
 #' @importFrom ggplot2 scale_y_continuous
 #' @importFrom ggplot2 theme
 #' @importFrom ggplot2 theme_bw
 #' @importFrom scales pretty_breaks
 plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_name='Ordered labels', palette='RdBu') {
-	stop('not implemented yet')
-	# get smoothed data across all genes
-	x_all 		= make_x_data(sce, rownames(sce), params)
+	# unpack
+    proj_dt     = psuper_obj$proj_dt
+    beta_dt     = psuper_obj$beta_dt
+    x_data      = psuper_obj$x_data
+    params      = psuper_obj$params
 
-	# restrict to just this set
-	extra_genes = intersect(extra_genes, colnames(x_all))
-	plot_wide 	= cbind(proj_dt, data.table(x_all[, extra_genes]))
-	plot_dt 	= melt.data.table(plot_wide, id=c('psuper', 'label_input', 'label_psuper'), variable.name='symbol')
-	corrs_dt 	= plot_dt[, list(abs_cor = abs(cor(psuper, value))), by=symbol]
-	setorder(corrs_dt, -abs_cor)
-	plot_dt[, symbol := factor(symbol, levels=corrs_dt$symbol)]
+	# restrict to specified genes
+	extra_genes = intersect(extra_genes, colnames(x_data))
+	if (length(extra_genes)==0) {
+		warning('genes not found; did not plot')
+		return()
+	}
+
+	# set up data
+    plot_wide   = cbind(proj_dt, data.table(x_data[, extra_genes]))
+    plot_dt     = melt.data.table(plot_wide, id = c("psuper", "label_input", "label_psuper"), variable.name = "symbol")
+    plot_dt[, `:=`(symbol, factor(symbol, levels = extra_genes))]
 
 	# set up plot
 	col_vals 	= make_col_vals(plot_dt$label_input, palette)
@@ -363,7 +368,6 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_
 		geom_point( size=1, aes(colour=label_input) ) +
 		geom_smooth(se=FALSE, colour='black') +
 		scale_colour_manual( values=col_vals ) +
-		scale_shape_manual( values=c(1, 16) ) +
 		scale_x_continuous( breaks=pretty_breaks() ) +
 		scale_y_continuous( breaks=pretty_breaks() ) +
 		facet_wrap( ~ symbol, scales='free_y', nrow=nrow, ncol=ncol ) +
@@ -375,7 +379,6 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_
 			x 		= 'psupertime'
 			,y 		= 'z-scored log2 expression'
 			,colour = label_name
-			# ,shape 	= 'Test / train data'
 			)
 	return(g)
 }
