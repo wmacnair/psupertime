@@ -713,6 +713,7 @@ plot_double_psupertime <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run
 	if (is.null(double_obj)) {
 		if ( is.null(psuper_1) | is.null(psuper_2) ) {
 			stop('either a double_obj must be given, or psuper_1 and psuper_2 must both be given')
+		} else {
 			double_obj 		= double_psupertime(psuper_1, psuper_2, run_names)
 		}
 	}
