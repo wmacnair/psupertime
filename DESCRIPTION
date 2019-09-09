@@ -7,10 +7,13 @@ Depends: R (>= 3.4.3)
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-Imports: data.table,
+Imports: cowplot,
+    data.table,
+    fastcluster,
     forcats,
     ggplot2,
     glmnet,
+    knitr,
     Matrix,
     RColorBrewer,
     SummarizedExperiment,
@@ -18,13 +21,10 @@ Imports: data.table,
     scran,
     stringr,
     grDevices,
-    scales
+    scales,
+    topGO
 Suggests: 
     BiocStyle, 
-    topGO,
-    cowplot,
-    fastcluster,
-    knitr,
     rmarkdown
 RoxygenNote: 6.1.1
 VignetteBuilder: knitr
