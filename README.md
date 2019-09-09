@@ -35,6 +35,10 @@ The vignette also describes some of the additional functionality you can use, an
 To keep this main package light, we have only included a small example dataset. To replicate the figures in the manuscript and provide additional datasets for user experimentation, we have also made a data package, `psupplementary`. If you would like to see in more detail what `psupertime` can do, please go [here](https://github.com/wmacnair/psupplementary).
 
 
+## Development roadmap
+
+At the moment, `psupertime` takes a `SingleCellExperiment`/`sce` object as an input, and returns a `psupertime` object. I want to make this a bit smoother for users, by integrating the outputs from `psupertime` into the row and column annotations of the `sce`. So for example, the gene coefficients would be stored in `rowData`, and the latent time estimates would be stored in `colData`. I'll also add some unit tests and submit to `Bioconductor`.
+
 ## Suggestions
 
 Please add any issues or requests to the _Issues_ page. All feedback enthusiastically received.
