@@ -89,7 +89,7 @@ check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale
 	}
 	n_genes 		= nrow(x)
 
-	if ( any(is.na(y) ) { 
+	if ( any(is.na(y)) ) { 
   		stop('input y contains missing values')
 	}
 	if (!is.factor(y)) {
