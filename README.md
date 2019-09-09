@@ -1,3 +1,5 @@
+<img src="inst/extdata/psuper_sticker.jpeg" width="200" align="right"/> 
+
 # psupertime
 
 :wave: Hello User! :wave:
