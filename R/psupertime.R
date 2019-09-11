@@ -89,10 +89,16 @@ check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale
 	}
 	n_genes 		= nrow(x)
 
+	if ( any(is.na(y)) ) { 
+  		stop('input y contains missing values')
+	}
 	if (!is.factor(y)) {
 		y 	= factor(y)
 		message('converting y to a factor. label ordering used for training psupertime is:')
 		message(paste(levels(y), collapse=', '))
+	}
+	if ( length(levels(y)) <=2 ) {
+		stop('psupertime must be run with at least 3 time-series labels')
 	}
 	if (!is.null(y_labels)) {
 		stop('y_labels not yet implemented')
