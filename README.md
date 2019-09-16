@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/wmacnair/psupertime.svg?branch=master)](https://travis-ci.org/wmacnair/psupertime)
+<br />
 <img src="inst/extdata/psuper_sticker.jpeg" width="200" align="right"/> 
 
 # psupertime
