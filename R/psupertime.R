@@ -3,7 +3,7 @@
 #'
 #' @param x Either SingleCellExperiment object containing a matrix of genes * cells required, or a matrix of log TPM values (also genes * cells).
 #' @param y Vector of labels, which should have same length as number of columns in sce / x. Factor levels will be taken as the intended order for training.
-#' @param y_labels Alternative ordering of the labels in y. All labels must be present in y.
+#' @param y_labels Alternative ordering and/or subset of the labels in y. All labels must be present in y. Smoothing and scaling are done on the whole dataset, before any subsetting takes place.
 #' @param assay_type If a SingleCellExperiment object is used as input, specifies which assay is to be used.
 #' @param sel_genes Method to be used to select interesting genes to be used in psupertime. Must be a string, with permitted values 'hvg', 'all', 'tf_mouse', 'tf_human' and 'list', corresponding to: highly variable genes, all genes, transcription factors in mouse, transcription factors in human, and a user-selected list. If sel_genes='list', then the parameter gene_list must also be specified as input, containing the user-specified list of genes. sel_genes may alternatively be a list, itself, specifying the parameters to be used for selecting highly variable genes via scran, with names 'hvg_cutoff', 'bio_cutoff' (optionally also 'span'). 
 #' @param gene_list If sel_genes is specified as 'list', gene_list specifies the list of user-specified genes.
@@ -317,6 +317,7 @@ select_genes <- function(x, params) {
 #' @importFrom ggplot2 scale_fill_distiller
 #' @importFrom ggplot2 theme_light
 #' @importFrom ggplot2 labs
+#' @importFrom Matrix rowMeans
 #' @importFrom scran trendVar
 #' @importFrom scran decomposeVar
 #' @importFrom SummarizedExperiment assay
@@ -326,6 +327,12 @@ calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	assay_type 		= 'logcounts'
 	if (!(assay_type %in% names(assays(sce)))) {
 		stop('to calculate highly variable genes (HVGs) with scran, x must contain the assay "logcounts"')
+	}
+	# check that values seem reasonabl
+	gene_means 		= Matrix::rowMeans(assay(sce, assay_type))
+	scran_min_mean 	= 0.1
+	if ( all(gene_means<=scran_min_mean) ) {
+		stop('Gene mean values are too low to identify HVGs (scran removes genes with\n  mean less than 0.1. Is your data scaled correctly?')
 	}
 	span 			= ifelse(is.null(params$span), 0.1, params$span)
 	var_fit 		= trendVar(assay(sce, assay_type), method="loess", loess.args=list(span=span))
