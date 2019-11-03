@@ -59,7 +59,7 @@ psupertime <- function(x, y, y_labels=NULL, assay_type='logcounts',
 	beta_dt 		= make_best_beta(glmnet_best, best_lambdas)
 
 	# make output
-	psuper_obj 		= make_psuper_obj(glmnet_best, x_data, y, x_test, y_test, proj_dt, beta_dt, best_lambdas, best_dt, scores_dt, params)
+	psuper_obj 		= make_psuper_obj(glmnet_best, x_data, y, x_test, y_test, test_idx, fold_list, proj_dt, beta_dt, best_lambdas, best_dt, scores_dt, params)
 
 	return(psuper_obj)
 }
@@ -1002,7 +1002,7 @@ make_best_beta <- function(glmnet_best, best_lambdas) {
 #' @importFrom data.table data.table
 #' @importFrom stringr str_detect
 #' @keywords internal
-make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, proj_dt, beta_dt, best_lambdas, best_dt, scores_dt, params) {
+make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, test_idx, fold_list, proj_dt, beta_dt, best_lambdas, best_dt, scores_dt, params) {
 	# make cuts_dt
 	which_idx 	= best_lambdas$which_idx
 	cut_idx 	= str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
@@ -1025,6 +1025,8 @@ make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, proj_dt, bet
 		,y 				= y
 		,x_test 		= x_test
 		,y_test 		= y_test
+		,test_idx 		= test_idx
+		,fold_list 		= fold_list
 		,proj_dt 		= proj_dt
 		,cuts_dt 		= cuts_dt
 		,beta_dt 		= beta_dt
