@@ -15,7 +15,7 @@ https://www.biorxiv.org/content/10.1101/622001v1
 
 To use this development version of the package, run the following lines in R:
 ```R
-remotes::install_github('wmacnair/psupertime', build = TRUE, build_opts = c("--no-resave-data", "--no-manual"))
+devtools::install_github('wmacnair/psupertime', build_vignettes=TRUE)
 library('psupertime')
 ```
 (You may need to install the package `remotes`, with `install.packages('remotes')`. Installation took <90s on a Macbook Pro.)
