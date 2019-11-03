@@ -25,6 +25,8 @@ psupertime <- function(x, y, y_labels=NULL, assay_type='logcounts',
 	penalization='1se', method='proportional', score='xentropy', 
 	n_folds=5, test_propn=0.1, lambdas=NULL, max_iters=1e3, seed=1234) {
 	# parse params
+	x 				= check_x(x, y, assay_type)
+	y 				= check_y(y, y_labels)
 	params 			= check_params(x, y, y_labels, 
 		assay_type, sel_genes, gene_list, scale, smooth, 
 		min_expression, penalization, method, score, 
@@ -33,6 +35,9 @@ psupertime <- function(x, y, y_labels=NULL, assay_type='logcounts',
 	# select genes, do processing of data
 	sel_genes 		= select_genes(x, params)
 	x_data 			= make_x_data(x, sel_genes, params)
+
+	# restrict to y_labels, if specified
+	data_list 		= restrict_to_y_labels(x_data, y, y_labels)
 
 	# make nice data for ordinal regression
 	test_idx 		= get_test_idx(y, params)
@@ -64,15 +69,14 @@ psupertime <- function(x, y, y_labels=NULL, assay_type='logcounts',
 	return(psuper_obj)
 }
 
-#' check all parameters
+#' Checks the gene info
 #'
 #' @importFrom SummarizedExperiment assays
 #' @return list of validated parameters
 #' @keywords internal
-check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale, smooth, min_expression, 
-	penalization, method, score, n_folds, test_propn, lambdas, max_iters, seed) {
+check_x <- function(x, y, assay_type) {
 	# check input data looks ok
-	if (!(class(x) %in% c('SingleCellExperiment', 'matrix', 'dgCMatrix', 'dgRMatrix'))) {
+	if (!(class(x) %in% c('SingleCellExperiment', 'matrix', 'dgCMatrix', 'dgRMatrix', 'dgTMatrix'))) {
 		stop('x must be either a SingleCellExperiment or a matrix of log counts')
 	}
 	if ( class(x)=='SingleCellExperiment') {
@@ -87,8 +91,15 @@ check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale
 	if (ncol(x)!=length(y)) {
 		stop('length of y must be same as number of cells (columns) in SingleCellExperiment x')
 	}
-	n_genes 		= nrow(x)
 
+	return(x)
+}
+
+#' Checks the labels
+#'
+#' @return checked labels
+#' @keywords internal
+check_y <- function(y, y_labels) {
 	if ( any(is.na(y)) ) { 
   		stop('input y contains missing values')
 	}
@@ -101,11 +112,28 @@ check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale
 		stop('psupertime must be run with at least 3 time-series labels')
 	}
 	if (!is.null(y_labels)) {
-		stop('y_labels not yet implemented')
+		if ( !is.character(y) ) {
+			stop('y_labels must be a character vector')
+		}
 		if ( !all(y_labels %in% levels(y)) ) {
 			stop('y_labels must be a subset of the labels for y')
 		}
+		if ( length(unique(y_labels)) <=2 ) {
+			stop('to use y_labels, y_labels must have at least 3 distinct values')
+		}		
 	}
+
+	return(y)
+}
+
+#' check all parameters
+#'
+#' @importFrom SummarizedExperiment assays
+#' @return list of validated parameters
+#' @keywords internal
+check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale, smooth, min_expression, 
+	penalization, method, score, n_folds, test_propn, lambdas, max_iters, seed) {
+	n_genes 		= nrow(x)
 
 	# check selection of genes is valid
 	sel_genes_list 	= c('hvg', 'all', 'tf_mouse', 'tf_human', 'list')
@@ -160,7 +188,7 @@ check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale
 
 	# what proportion of cells must express a gene for it to be included?
 	if ( !( is.numeric(min_expression) && ( min_expression>=0 & min_expression<=1) ) ) {
-		stop('min_expression must be a number greater than 0 and less than 1')
+		stop('min_expression must be a number between 0 and 1')
 	}
 
 	# how much regularization to use?
@@ -386,6 +414,10 @@ get_go_list <- function(dirs) {
 }
 
 #' Process input data
+#' 
+#' Note that input is matrix with rows=genes, cols=cells, and that output
+#' has rows=cells, genes=cols
+#' 
 #' @param x SingleCellExperiment or matrix of log counts
 #' @param sel_genes Selected genes
 #' @param params Full list of parameters
@@ -400,7 +432,7 @@ make_x_data <- function(x, sel_genes, params) {
 	# get matrix
 	if ( class(x)=='SingleCellExperiment' ) {
 		x_data 		= assay(x, params$assay_type)
-	} else if (class(x) %in% c('matrix', 'dgCMatrix', 'dgRMatrix')) {
+	} else if (class(x) %in% c('matrix', 'dgCMatrix', 'dgRMatrix', 'dgTMatrix')) {
 		x_data 		= x
 	} else {
 		stop('x must be either a SingleCellExperiment or a matrix of counts')
@@ -475,6 +507,25 @@ make_x_data <- function(x, sel_genes, params) {
 	message(sprintf('    processed data is %d cells * %d genes', nrow(x_data), ncol(x_data)))
 
 	return(x_data)
+}
+
+#' Use y_labels to define cells to use, and order of labels
+#' 
+#' @param x_data matrix output from make_x_data (rows=cells, cols=genes)
+#' @param y factor of cell labels
+#' @param y_labels list of labels to restrict to, and order to use
+restrict_to_y_labels <- function(x_data, y, y_labels) {
+	if (is.null(y_labels)) {
+		data_list 	= list(x_data=x_data, y=y)
+	} else {
+		# restrict to correct bit of y, set levels
+		y_idx		= y %in% y_labels
+		data_list 	= list(
+			x_data 	= x_data[y_idx, ], 
+			y 		= factor(y[y_idx], levels=y_labels)
+			)
+	}
+	return(data_list)
 }
 
 #' Get list of cells to keep aside as test set
