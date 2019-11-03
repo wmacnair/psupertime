@@ -4,7 +4,8 @@
 \alias{double_psupertime}
 \title{Projects two different psupertimes onto each other}
 \usage{
-double_psupertime(psuper_1, psuper_2, run_names = NULL)
+double_psupertime(psuper_1, psuper_2, run_names = NULL,
+  process = FALSE)
 }
 \arguments{
 \item{psuper_1, }{psuper_2 Two previously calculated psupertime objects}

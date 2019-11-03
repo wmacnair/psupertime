@@ -401,7 +401,7 @@ process_new_data <- function(psuper_obj, new_x) {
 #' @param new_x, new_y Optional pair of new data and labels
 #' @return data.table with projection and labels
 #' @export
-project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL, process=TRUE) {
+project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL, process=FALSE) {
 	# unpack
 	glmnet_best 	= psuper_obj$glmnet_best
 	best_lambdas 	= psuper_obj$best_lambdas
@@ -618,7 +618,7 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 #' @param labels Character vector of length two, labelling the psupertime inputs
 #' @return data.table containing projections in both directions
 #' @export
-double_psupertime <- function(psuper_1, psuper_2, run_names=NULL) {
+double_psupertime <- function(psuper_1, psuper_2, run_names=NULL, process=FALSE) {
 	# check run_names
 	if ( is.null(run_names) ) {
 		run_names 	= c('1','2')
@@ -650,7 +650,7 @@ double_psupertime <- function(psuper_1, psuper_2, run_names=NULL) {
 			if (ii == jj) {
 				proj_ii_on_jj 	= psuper_ii$proj_dt
 			} else {
-				proj_ii_on_jj 	= project_onto_psupertime(psuper_jj, psuper_ii$x_data, psuper_ii$y)
+				proj_ii_on_jj 	= project_onto_psupertime(psuper_jj, psuper_ii$x_data, psuper_ii$y, process)
 			}
 
 			# label
@@ -696,6 +696,23 @@ double_psupertime <- function(psuper_1, psuper_2, run_names=NULL) {
 
 #' Projects two different psupertimes onto each other, using points, side by side
 #'
+#' To do this, psupertime builds an internal \code{double_psupertime} object containing 
+#' the projections. Given two psupertime objects \code{psuper_1} and \code{psuper_2}, you can 
+#' call it in two ways: 
+#' 
+#' (1) By specifying the two psupertime objects you want to project:
+#' \code{plot_double_psupertime(psuper_1=psuper_1, psuper_2=psuper_2)}
+#' 
+#' (2) Or by first constructing a \code{double_psupertime} object:
+#' \code{double_obj = double_psupertime(psuper_1, psuper_2)}
+#' \code{plot_double_psupertime(double_obj=double_obj)}
+#'
+#' For the coefficients of the two objects to be meaningfully applied to each 
+#' other, the data needs to have been processed in the same way for each. We 
+#' therefore recommend first preprocessing the data (either via \code{psupertime}'s 
+#' defaults, or via your preferred method, then running \code{psupertime} with 
+#' \code{smooth=FALSE} and \code{scale=FALSE}.
+#'
 #' @param double_obj Result of applying double_psupertime to two previously calculated psupertime objects
 #' @param psuper_1, psuper_2 Two previously calculated psupertime objects
 #' @param run_names Character vector of length two, labelling the psupertime inputs
@@ -708,13 +725,13 @@ double_psupertime <- function(psuper_1, psuper_2, run_names=NULL) {
 #' @importFrom ggplot2 labs
 #' @importFrom ggplot2 scale_colour_manual
 #' @importFrom ggplot2 theme_bw
-plot_double_psupertime <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run_names=NULL) {
+plot_double_psupertime <- function(double_obj=NULL, psuper_1=NULL, psuper_2=NULL, run_names=NULL, process=FALSE) {
 	# check inputs
 	if (is.null(double_obj)) {
 		if ( is.null(psuper_1) | is.null(psuper_2) ) {
 			stop('either a double_obj must be given, or psuper_1 and psuper_2 must both be given')
 		} else {
-			double_obj 		= double_psupertime(psuper_1, psuper_2, run_names)
+			double_obj 		= double_psupertime(psuper_1, psuper_2, run_names, process)
 		}
 	}
 
@@ -753,6 +770,8 @@ plot_double_psupertime <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run
 
 #' Projects two different psupertimes on top of each other
 #'
+#' See `plot_double_psupertime` for further detail.
+#' 
 #' @param double_obj Result of applying double_psupertime to two previously calculated psupertime objects
 #' @param psuper_1, psuper_2 Two previously calculated psupertime objects
 #' @param run_names Character vector of length two, labelling the psupertime inputs
@@ -764,7 +783,7 @@ plot_double_psupertime <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run
 #' @importFrom ggplot2 labs
 #' @importFrom ggplot2 scale_colour_brewer
 #' @importFrom ggplot2 theme_bw
-plot_double_psupertime_contour <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run_names=NULL) {
+plot_double_psupertime_contour <- function(double_obj=NULL, psuper_1=NULL, psuper_2=NULL, run_names=NULL) {
 	# check run_names
 	if ( is.null(run_names) ) {
 		run_names 	= c('1','2')
@@ -778,6 +797,7 @@ plot_double_psupertime_contour <- function(double_obj, psuper_1=NULL, psuper_2=N
 	if (is.null(double_obj)) {
 		if ( is.null(psuper_1) | is.null(psuper_2) ) {
 			stop('either a double_obj must be given, or psuper_1 and psuper_2 must both be given')
+		} else {
 			double_obj 		= double_psupertime(psuper_1, psuper_2, run_names)
 		}
 	}
@@ -860,6 +880,8 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 
 #' Plots the confusion matrices of two psupertime objects against each other
 #'
+#' See `plot_double_psupertime` for further detail.
+#'
 #' @param double_obj Result of applying double_psupertime to two previously calculated psupertime objects
 #' @param psuper_1, psuper_2 Two previously calculated psupertime objects
 #' @param run_names Character vector of length two, labelling the psupertime inputs
@@ -879,7 +901,7 @@ plot_double_psupertime_genes <- function(psuper_1, psuper_2, run_names=NULL) {
 #' @importFrom ggplot2 scale_x_discrete
 #' @importFrom ggplot2 theme_bw
 #' @importFrom scales pretty_breaks
-plot_double_psupertime_confusion <- function(double_obj, psuper_1=NULL, psuper_2=NULL, run_names=NULL, plot_var='prop_true', palette='BuPu') {
+plot_double_psupertime_confusion <- function(double_obj=NULL, psuper_1=NULL, psuper_2=NULL, run_names=NULL, plot_var='prop_true', palette='BuPu') {
 	if ( !requireNamespace("cowplot", quietly=TRUE) ) {
 		message('cowplot not installed; not plotting confusion matrix')
 		return()
@@ -894,6 +916,7 @@ plot_double_psupertime_confusion <- function(double_obj, psuper_1=NULL, psuper_2
 	if (is.null(double_obj)) {
 		if ( is.null(psuper_1) | is.null(psuper_2) ) {
 			stop('either a double_obj must be given, or psuper_1 and psuper_2 must both be given')
+		} else {
 			double_obj 		= double_psupertime(psuper_1, psuper_2, run_names)
 		}
 	}

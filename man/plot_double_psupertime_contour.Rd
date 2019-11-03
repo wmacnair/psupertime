@@ -4,7 +4,7 @@
 \alias{plot_double_psupertime_contour}
 \title{Projects two different psupertimes on top of each other}
 \usage{
-plot_double_psupertime_contour(double_obj, psuper_1 = NULL,
+plot_double_psupertime_contour(double_obj = NULL, psuper_1 = NULL,
   psuper_2 = NULL, run_names = NULL)
 }
 \arguments{
@@ -18,5 +18,5 @@ plot_double_psupertime_contour(double_obj, psuper_1 = NULL,
 ggplot object plotting the two against each other
 }
 \description{
-Projects two different psupertimes on top of each other
+See `plot_double_psupertime` for further detail.
 }
