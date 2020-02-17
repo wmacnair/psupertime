@@ -91,6 +91,15 @@ check_x <- function(x, y, assay_type) {
 	if (ncol(x)!=length(y)) {
 		stop('length of y must be same as number of cells (columns) in SingleCellExperiment x')
 	}
+	if (is.null(colnames(x))) {
+		warning("x has no colnames; giving arbitrary colnames")
+		n_cells 	= ncol(x)
+		n_digits 	= ceiling(log10(n_cells))
+		format_str 	= sprintf("cell%%0%dd", n_digits)
+		colnames(x) = sprintf(format_str, 1:n_cells)
+	}
+	if ( length(unique(colnames(x))) != ncol(x) )
+		stop("colnames of x should be unique (= cell identifiers)")
 
 	return(x)
 }
@@ -511,6 +520,9 @@ make_x_data <- function(x, sel_genes, params) {
 		colnames(x_data) 	= new_names
 	}
 
+	# add rownames to x
+	rownames(x_data) 	= colnames(x)
+	
 	message(sprintf('    processed data is %d cells * %d genes', nrow(x_data), ncol(x_data)))
 
 	return(x_data)
@@ -1031,7 +1043,8 @@ calc_proj_dt <- function(glmnet_best, x_data, y_labels, best_lambdas) {
 
 	# put into data.table
 	proj_dt 	= data.table(
-		psuper 			= psuper[, 1]
+		cell_id 		= rownames(x_data)
+		,psuper 		= psuper[, 1]
 		,label_input 	= y_labels
 		,label_psuper 	= pred_classes
 		)

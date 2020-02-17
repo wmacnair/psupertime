@@ -285,7 +285,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 
 	# set up data for plotting
 	plot_wide 	= cbind(proj_dt, data.table(x_data[, top_genes, drop=FALSE]))
-	plot_dt 	= melt.data.table(plot_wide, id=c('psuper', 'label_input', 'label_psuper'), measure=top_genes, variable.name='symbol')
+	plot_dt 	= melt.data.table(plot_wide, id=c('cell_id', 'psuper', 'label_input', 'label_psuper'), measure=top_genes, variable.name='symbol')
 	plot_dt[, symbol := factor(symbol, levels=top_genes)]
 
 	# get colours
