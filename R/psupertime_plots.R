@@ -252,6 +252,7 @@ plot_identified_gene_coefficients <- function(psuper_obj, n=20, abs_cutoff=0.05)
 #' @param label_name Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')
 #' @param n_to_plot Maximum number of genes to plot (default 20)
 #' @param palette RColorBrewer palette to use
+#' @param plot_ratio ratio of columns to rows (default is 5:4)
 #' @return ggplot2 object
 #' @export
 #' @importFrom data.table data.table
@@ -270,7 +271,7 @@ plot_identified_gene_coefficients <- function(psuper_obj, n=20, abs_cutoff=0.05)
 #' @importFrom ggplot2 theme
 #' @importFrom ggplot2 theme_bw
 #' @importFrom scales pretty_breaks
-plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordered labels', n_to_plot=20, palette='RdBu') {
+plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordered labels', n_to_plot=20, palette='RdBu', plot_ratio=1.25) {
 	# unpack
 	proj_dt 	= psuper_obj$proj_dt
 	beta_dt 	= psuper_obj$beta_dt
@@ -284,11 +285,14 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 
 	# set up data for plotting
 	plot_wide 	= cbind(proj_dt, data.table(x_data[, top_genes, drop=FALSE]))
-	plot_dt 	= melt.data.table(plot_wide, id=c('psuper', 'label_input', 'label_psuper'), variable.name='symbol')
+	plot_dt 	= melt.data.table(plot_wide, id=c('psuper', 'label_input', 'label_psuper'), measure=top_genes, variable.name='symbol')
 	plot_dt[, symbol := factor(symbol, levels=top_genes)]
 
 	# get colours
 	col_vals 	= make_col_vals(plot_dt$label_input, palette)
+	n_genes 	= length(top_genes)
+	ncol 		= ceiling(sqrt(n_genes*plot_ratio))
+	nrow 		= ceiling(n_genes/ncol)
 
 	# plot
 	g =	ggplot(plot_dt) +
@@ -299,7 +303,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 		scale_shape_manual( values=c(1, 16) ) +
 		scale_x_continuous( breaks=pretty_breaks() ) +
 		scale_y_continuous( breaks=pretty_breaks() ) +
-		facet_wrap( ~ symbol, scales='free_y' ) +
+		facet_wrap( ~ symbol, scales='free_y', nrow=nrow, ncol=ncol ) +
 		theme_bw() +
 		theme(
 			axis.text.x = element_blank()
@@ -318,6 +322,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 #' @param extra_genes List of genes to be plotted (these must be in the set of genes used for calculating psupertime, e.g. highly variable genes)
 #' @param label_name Description for the ordered labels in the legend (e.g. 'Developmental stage (days)')
 #' @param palette RColorBrewer palette to use
+#' @param plot_ratio ratio of columns to rows (default is 5:4)
 #' @return ggplot2 object
 #' @export
 #' @importFrom data.table data.table
@@ -335,7 +340,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 #' @importFrom ggplot2 theme
 #' @importFrom ggplot2 theme_bw
 #' @importFrom scales pretty_breaks
-plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_name='Ordered labels', palette='RdBu') {
+plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_name='Ordered labels', palette='RdBu', plot_ratio=1.25) {
 	# unpack
     proj_dt     = psuper_obj$proj_dt
     beta_dt     = psuper_obj$beta_dt
@@ -351,16 +356,19 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_
 
 	# set up data
     plot_wide   = cbind(proj_dt, data.table(x_data[, extra_genes, drop=FALSE]))
-    plot_dt     = melt.data.table(plot_wide, id = c("psuper", "label_input", "label_psuper"), variable.name = "symbol")
+    plot_dt     = melt.data.table(
+    	plot_wide, 
+    	id 				= c("psuper", "label_input", "label_psuper"), 
+    	measure 		= extra_genes, 
+    	variable.name 	= "symbol"
+    	)
     plot_dt[, `:=`(symbol, factor(symbol, levels = extra_genes))]
 
 	# set up plot
 	col_vals 	= make_col_vals(plot_dt$label_input, palette)
 	n_genes 	= length(extra_genes)
-	plot_ratio 	= 5/4
 	ncol 		= ceiling(sqrt(n_genes*plot_ratio))
 	nrow 		= ceiling(n_genes/ncol)
-	plot_unit 	= 2.5
 
 	# plot
 	g =	ggplot(plot_dt) +
@@ -529,7 +537,7 @@ check_conf_params <- function(plot_var) {
 #' @importFrom ggplot2 scale_x_discrete
 #' @importFrom ggplot2 theme_bw
 #' @importFrom scales pretty_breaks
-plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL, plot_var='prop_true', palette='BuPu') {
+plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL, process=FALSE, plot_var='prop_true', palette='BuPu') {
 	# decide what to plot
 	conf_params 	= check_conf_params(plot_var)
 	plot_var 		= conf_params$plot_var
