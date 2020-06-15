@@ -612,11 +612,14 @@ train_on_folds <- function(x_train, y_train, fold_list, params) {
 	return(scores_dt)
 }
 
+#' This is based on an equivalent function from the package \code{glmnetcr}, 
+#' which is sadly no longer on CRAN.
+#' 
 #' @importFrom glmnet glmnet
 #' @keywords internal
 glmnetcr_propn <- function(x, y, method = "proportional", weights = NULL, offset = NULL, 
     alpha = 1, nlambda = 100, lambda.min.ratio = NULL, lambda = NULL, 
-    standardize = TRUE, thresh = 1e-04, exclude, penalty.factor = NULL, 
+    standardize = TRUE, thresh = 1e-04, exclude = NULL, penalty.factor = NULL, 
     maxit = 100) {
     if (length(unique(y)) == 2) 
         stop("Binary response: Use glmnet with family='binomial' parameter")
@@ -695,12 +698,13 @@ predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 		y 			= newy
 	}
 	method 		= object$method
-	method 		= c("backward", "forward", "proportional")[charmatch(method, c("backward", "forward", "proportional"))]
+	method 		= c("backward", "forward", "proportional")[
+		charmatch(method, c("backward", "forward", "proportional"))
+		]
 	y_levels 	= levels(object$y)
 	k 			= length(y_levels)
-	if (class(newx) == "numeric") {
+	if ( is.numeric(newx) & !is.matrix(newx) )
 		newx 		= matrix(newx, ncol = dim(object$x)[2])
-	}
 	beta.est 	= object$beta
 
 	# split betas into cutpoints, gene coefficients
@@ -715,7 +719,8 @@ predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 	missing_g 	= setdiff(beta_genes, data_genes)
 	if (length(missing_g)>0) {
 		# decide which to keep
-		message("    these genes are missing from the input data and are not used for projecting:")
+		message("    these genes are missing from the input data and 
+			are not used for projecting:")
 		message('        ', paste(missing_g, collapse=', '), sep='')
 		message("    this may affect the projection\n")
 		both_genes 	= intersect(beta_genes, data_genes)
@@ -767,10 +772,11 @@ predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 			for (j in k:2) {
 				if (j == k) {
 					pi[, j, i] 	= delta[, k - 1]
-				} else if (class(minus.delta[, j:(k - 1)]) == "numeric") {
+				} else if ( class(minus.delta[, j:(k - 1)]) == "numeric" ) {
 					pi[, j, i] 	= delta[, j - 1] * minus.delta[, j]
 				} else if (dim(minus.delta[, j:(k - 1)])[2] >= 2) {
-					pi[, j, i] 	= delta[, j - 1] * apply(minus.delta[, j:(k - 1)], 1, prod)
+					pi[, j, i] 	= delta[, j - 1] * 
+						apply(minus.delta[, j:(k - 1)], 1, prod)
 				}
 			}
 			if (n == 1) {
@@ -786,7 +792,8 @@ predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 				} else if (j == 2) {
 					pi[, j, i] 	= delta[, j] * minus.delta[, j - 1]
 				} else if (j > 2 && j < k) {
-					pi[, j, i] 	= delta[, j] * apply(minus.delta[, 1:(j - 1)], 1, prod)
+					pi[, j, i] 	= delta[, j] * 
+						apply(minus.delta[, 1:(j - 1)], 1, prod)
 				}
 			}
 			if (n == 1) {
@@ -820,32 +827,35 @@ predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 		# calculate log likelihoods
 		if (method == "backward") {
 			for (j in 1:(k - 1)) {
-				if (class(y.mat[, 1:j]) == "matrix") {
+				if ( is.matrix(y.mat[, 1:j]) ) {
 					ylth 		= apply(y.mat[, 1:j], 1, sum)}
 				else {
 					ylth 		= y.mat[, 1]
 				}
-				LL_mat[, i] = LL_mat[, i] + log(delta[, j]) * y.mat[, j + 1] + log(1 - delta[, j]) * ylth
+				LL_mat[, i] = LL_mat[, i] + log(delta[, j]) * y.mat[, j + 1] + 
+					log(1 - delta[, j]) * ylth
 			}
 		}
 		if (method == "forward") {
 			for (j in 1:(k - 1)) {
-				if (class(y.mat[, j:k]) == "matrix") {
+				if ( is.matrix(y.mat[, j:k]) ) {
 					ygeh 		= apply(y.mat[, j:k], 1, sum)
 				} else {
 					ygeh 		= y.mat[, k]
 				}
-				LL_mat[, i] = LL_mat[, i] + log(delta[, j]) * y.mat[, j] + log(1 - delta[, j]) * ygeh
+				LL_mat[, i] = LL_mat[, i] + log(delta[, j]) * y.mat[, j] + 
+					log(1 - delta[, j]) * ygeh
 			}
 		}
 		if (method == "proportional") {
 			for (j in 1:(k - 1)) {
-				if (class(y.mat[, j:k]) == "matrix") {
+				if ( is.matrix(y.mat[, j:k]) ) {
 					ygeh 		= apply(y.mat[, j:k], 1, sum)
 				} else {
 					ygeh 		= y.mat[, k]
 				}
-				LL_mat[, i] = LL_mat[, i] + log(delta[, j]) * y.mat[, j] + log(1 - delta[, j]) * ygeh
+				LL_mat[, i] = LL_mat[, i] + log(delta[, j]) * y.mat[, j] + 
+					log(1 - delta[, j]) * ygeh
 			}
 		}
 		LL_temp 		= sum(LL_mat[, i])
@@ -859,11 +869,19 @@ predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 	}
 	LL 					= colSums(LL_mat)
 	class 				= matrix(y_levels[p.class], ncol = ncol(p.class))
-	names(glmnet.BIC) 	= names(glmnet.AIC) = dimnames(p.class)[[2]] = dimnames(pi)[[3]] = names(object$a0)
+	names(glmnet.BIC) 	= names(glmnet.AIC) 	= names(object$a0)
+	dimnames(p.class)[[2]] = dimnames(pi)[[3]] 	= names(object$a0)
 	dimnames(pi)[[2]] 	= y_levels
 
 	# output
-	list(BIC=glmnet.BIC, AIC=glmnet.AIC, class=class, probs=pi, LL=LL, LL_mat=LL_mat)
+	list(
+		BIC 	= glmnet.BIC, 
+		AIC 	= glmnet.AIC, 
+		class 	= class, 
+		probs 	= pi, 
+		LL 		= LL, 
+		LL_mat 	= LL_mat
+		)
 }
 
 #' @importFrom data.table data.table
