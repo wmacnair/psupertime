@@ -4,7 +4,9 @@
 \name{tf_mouse}
 \alias{tf_mouse}
 \title{List of mouse transcription factors}
-\format{A character vector of length 827}
+\format{
+A character vector of length 827
+}
 \source{
 \url{https://www.grnpedia.org/trrust/downloadnetwork.php}
 }

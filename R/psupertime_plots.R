@@ -53,7 +53,7 @@ psupertime_plot_all <- function(psuper_obj, output_dir='.', tag='', label_name='
 #' @importFrom ggplot2 theme_bw
 plot_train_results <- function(psuper_obj) {
 	# unpack
-	params 			= psuper_obj$params
+	ps_params 		= psuper_obj$ps_params
 	scores_dt 		= psuper_obj$scores_dt
 	glmnet_best 	= psuper_obj$glmnet_best
 
@@ -79,7 +79,7 @@ plot_train_results <- function(psuper_obj) {
 	lines_best 		= copy(psuper_obj$best_dt)
 	dummy_dt 		= data.table(score_var=c('sparsity', 'xentropy', 'class_error'))
 	lines_best 		= lines_best[ dummy_dt, on='score_var']
-	lines_best[, selected := score_var==params$score ]
+	lines_best[, selected := score_var==ps_params$score ]
 
 	# add nice labels for accuracy measures
 	plot_dt 		= rbind(mean_scores, sparse_dt)
@@ -91,7 +91,7 @@ plot_train_results <- function(psuper_obj) {
 	lines_best 		= measures_dt[lines_best, on='score_var']
 	
 	# which measure used for model selection?
-	nice_sel_var 		= measures_dt[ score_var==params$score ]$nice_score_var
+	nice_sel_var 		= measures_dt[ score_var==ps_params$score ]$nice_score_var
 
 	# set up
 	g = ggplot(plot_dt) +
@@ -138,7 +138,7 @@ plot_train_results <- function(psuper_obj) {
 #' @param y_labels List of labels used for training
 #' @return Colour values
 #' @keywords internal
-make_col_vals <- function(y_labels, palette='RdBu') {
+.make_col_vals <- function(y_labels, palette='RdBu') {
 	n_labels 	= length(levels(y_labels))
 	max_col 	= 11
 	if (n_labels==1) {
@@ -182,7 +182,7 @@ plot_labels_over_psupertime <- function(psuper_obj, label_name='Ordered labels',
 	cuts_dt 		= psuper_obj$cuts_dt
 
 	# make nice colours
-	col_vals 		= make_col_vals(proj_dt$label_input, palette)
+	col_vals 		= .make_col_vals(proj_dt$label_input, palette)
 
 	# plot
 	g = ggplot(proj_dt) +
@@ -276,7 +276,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 	proj_dt 	= psuper_obj$proj_dt
 	beta_dt 	= psuper_obj$beta_dt
 	x_data 		= psuper_obj$x_data
-	params 		= psuper_obj$params
+	ps_params 	= psuper_obj$ps_params
 
 	# aset
 	beta_nzero 	= beta_dt[ abs_beta > 0 ]
@@ -289,7 +289,7 @@ plot_identified_genes_over_psupertime <- function(psuper_obj, label_name='Ordere
 	plot_dt[, symbol := factor(symbol, levels=top_genes)]
 
 	# get colours
-	col_vals 	= make_col_vals(plot_dt$label_input, palette)
+	col_vals 	= .make_col_vals(plot_dt$label_input, palette)
 	n_genes 	= length(top_genes)
 	ncol 		= ceiling(sqrt(n_genes*plot_ratio))
 	nrow 		= ceiling(n_genes/ncol)
@@ -345,7 +345,7 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_
     proj_dt     = psuper_obj$proj_dt
     beta_dt     = psuper_obj$beta_dt
     x_data      = psuper_obj$x_data
-    params      = psuper_obj$params
+    ps_params 	= psuper_obj$ps_params
 
 	# restrict to specified genes
 	extra_genes = intersect(extra_genes, colnames(x_data))
@@ -365,7 +365,7 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_
     plot_dt[, `:=`(symbol, factor(symbol, levels = extra_genes))]
 
 	# set up plot
-	col_vals 	= make_col_vals(plot_dt$label_input, palette)
+	col_vals 	= .make_col_vals(plot_dt$label_input, palette)
 	n_genes 	= length(extra_genes)
 	ncol 		= ceiling(sqrt(n_genes*plot_ratio))
 	nrow 		= ceiling(n_genes/ncol)
@@ -392,14 +392,14 @@ plot_specified_genes_over_psupertime <- function(psuper_obj, extra_genes, label_
 }
 
 #' @keywords internal
-process_new_data <- function(psuper_obj, new_x) {
+.process_new_data <- function(psuper_obj, new_x) {
 	# process new_x
-	params_copy 				= psuper_obj$params
+	params_copy 				= psuper_obj$ps_params
 	params_copy$sel_genes 		= 'list'
 	params_copy$gene_list 		= colnames(psuper_obj$x_data)
 	params_copy$min_expression 	= 0
-	sel_genes 					= select_genes(new_x, params_copy)
-	new_data 					= make_x_data(new_x, sel_genes, params_copy)
+	sel_genes 					= .select_genes(new_x, params_copy)
+	new_data 					= .make_x_data(new_x, sel_genes, params_copy)
 	return(new_data)
 }
 
@@ -420,7 +420,7 @@ project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL, process=
 		y_in 			= psuper_obj$y
 	} else if ( !is.null(new_x) & !is.null(new_y) ) {
 		if (process==TRUE) {
-			x_in 			= process_new_data(psuper_obj, new_x)
+			x_in 			= .process_new_data(psuper_obj, new_x)
 		} else {
 			x_in 			= new_x
 		}
@@ -435,7 +435,7 @@ project_onto_psupertime <- function(psuper_obj, new_x=NULL, new_y=NULL, process=
 		stop('either both of new_x and new_y must be given, or neither')
 	}
 
-	proj_dt 		= calc_proj_dt(glmnet_best, x_in, y_in, best_lambdas)
+	proj_dt 		= .calc_proj_dt(glmnet_best, x_in, y_in, best_lambdas)
 
 	return(proj_dt)
 }
@@ -461,7 +461,7 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, labels=c('Or
 	proj_new 	= project_onto_psupertime(psuper_obj, new_x, new_y, process)
 
 	# make nice colours
-	col_vals 	= make_col_vals(proj_new$label_input, palette)
+	col_vals 	= .make_col_vals(proj_new$label_input, palette)
 
 	# get cutpoints
 	cuts_dt 	= psuper_obj$cuts_dt
@@ -509,7 +509,7 @@ plot_new_data_over_psupertime <- function(psuper_obj, new_x, new_y, labels=c('Or
 #' @param plot_var Variable to plot: prop_true is proportion of true labels, prop_predict is proportion of predicted labels, N is # of cells
 #' @return list with checked plot_var, and nice label
 #' @internal
-check_conf_params <- function(plot_var) {
+.check_conf_params <- function(plot_var) {
 	plot_var_list 	= c('prop_true', 'N', 'prop_predict')
 	plot_var 		= match.arg(plot_var, plot_var_list)
 	labels_list 	= c(prop_true='Proportion\nof labelled\nclass\n', N='# of cells', prop_predict='Proportion\nof predicted\nclass\n')
@@ -539,7 +539,7 @@ check_conf_params <- function(plot_var) {
 #' @importFrom scales pretty_breaks
 plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL, process=FALSE, plot_var='prop_true', palette='BuPu') {
 	# decide what to plot
-	conf_params 	= check_conf_params(plot_var)
+	conf_params 	= .check_conf_params(plot_var)
 	plot_var 		= conf_params$plot_var
 	plot_label 		= conf_params$plot_label
 
@@ -548,7 +548,7 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 	glmnet_best 	= psuper_obj$glmnet_best
 
 	# define fn to handle y
-	get_y_in <- function(new_y) {
+	.get_y_in <- function(new_y) {
 		if (is.null(new_x)) {
 			if ( length(new_y) != length(psuper_obj$y) ) {
 				stop('when no new_x given, new_y must be same length as original y')
@@ -571,11 +571,11 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 
 	} else if ( is.null(new_x) & !is.null(new_y) ) {
 		x_in 			= psuper_obj$x_data
-		y_in 			= get_y_in(new_y)
+		y_in 			= .get_y_in(new_y)
 
 	} else if ( !is.null(new_x) & !is.null(new_y) ) {
-		x_in 			= process_new_data(psuper_obj, new_x)
-		y_in 			= get_y_in(new_y)
+		x_in 			= .process_new_data(psuper_obj, new_x)
+		y_in 			= .get_y_in(new_y)
 
 	} else if ( !is.null(new_x) & is.null(new_y) ) {
 		stop('to use new_x, new_y must also be given')
@@ -585,7 +585,7 @@ plot_predictions_against_classes <- function(psuper_obj, new_x=NULL, new_y=NULL,
 	}
 
 	# get predicted classes for each thing
-	predictions 	= predict_glmnetcr_propodds(glmnet_best, x_in, y_in)
+	predictions 	= .predict_glmnetcr_propodds(glmnet_best, x_in, y_in)
 	pred_classes 	= factor(predictions$class[, which_idx], levels=levels(psuper_obj$y))
 	predict_dt 		= data.table( predicted=pred_classes, true=y_in )
 
@@ -750,7 +750,7 @@ plot_double_psupertime <- function(double_obj=NULL, psuper_1=NULL, psuper_2=NULL
 	doubles_wide 	= double_obj$doubles_wide
 
 	# make colours
-	col_vals 		= make_col_vals(doubles_wide$label_input)
+	col_vals 		= .make_col_vals(doubles_wide$label_input)
 
 	# add facet labels
 	plot_dt 		= copy(doubles_wide)
@@ -916,7 +916,7 @@ plot_double_psupertime_confusion <- function(double_obj=NULL, psuper_1=NULL, psu
 	}
 
 	# decide what to plot
-	conf_params 	= check_conf_params(plot_var)
+	conf_params 	= .check_conf_params(plot_var)
 	plot_var 		= conf_params$plot_var
 	plot_label 		= conf_params$plot_label
 
@@ -1138,11 +1138,11 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping, k=5, sig_cutoff=5) {
 	hclust_obj 		= fastcluster::hclust(dist(t(x_data)), method='complete')
 
 	# extract clusters from them
-	clusters_dt 	= calc_clusters_dt(hclust_obj, x_data, proj_dt, k)
-	go_results 		= do_topgo_for_cluster(clusters_dt, sig_cutoff, org_mapping)
+	clusters_dt 	= .calc_clusters_dt(hclust_obj, x_data, proj_dt, k)
+	go_results 		= .do_topgo_for_cluster(clusters_dt, sig_cutoff, org_mapping)
 
 	# make plot_dt
-	plot_dt 		= make_plot_dt(x_data, hclust_obj, proj_dt, clusters_dt)
+	plot_dt 		= .make_plot_dt(x_data, hclust_obj, proj_dt, clusters_dt)
 
 	# assemble outputs
 	go_list = list(
@@ -1162,7 +1162,7 @@ psupertime_go_analysis <- function(psuper_obj, org_mapping, k=5, sig_cutoff=5) {
 #' @param proj_dt Projection of cells onto psupertime
 #' @return data.table containing clusters of genes, ordered according to correlation with psupertime
 #' @internal
-calc_clusters_dt <- function(hclust_obj, x_data, proj_dt, k=5) {
+.calc_clusters_dt <- function(hclust_obj, x_data, proj_dt, k=5) {
 	# make thing
 	clusters_dt 	= data.table( h_clust=cutree(hclust_obj, k=k), symbol=colnames(x_data))
 	# add clustering
@@ -1193,7 +1193,7 @@ calc_clusters_dt <- function(hclust_obj, x_data, proj_dt, k=5) {
 #' @param sig_cutoff How many genes should be in the cluster for us to consider a GO term?
 #' @return data.table with GO term results
 #' @internal
-do_topgo_for_cluster <- function(clusters_dt, sig_cutoff, org_mapping) {
+.do_topgo_for_cluster <- function(clusters_dt, sig_cutoff, org_mapping) {
 	# set up
 	all_clusters 	= unique(clusters_dt[N>=sig_cutoff]$clust)
 	go_results 		= data.table()
@@ -1251,7 +1251,7 @@ do_topgo_for_cluster <- function(clusters_dt, sig_cutoff, org_mapping) {
 #' @param clusters_dt 
 #' @return data.table for plotting
 #' @internal
-make_plot_dt <- function(x_data, hclust_obj, proj_dt, clusters_dt) {
+.make_plot_dt <- function(x_data, hclust_obj, proj_dt, clusters_dt) {
 	# plot
 	plot_dt 			= data.table(melt(x_data, varnames=c('cell_id', 'symbol')))
 
@@ -1375,7 +1375,7 @@ plot_profiles_of_gene_clusters <- function(go_list, label_name='Ordered labels',
 	means_dt 	= plot_dt[, list(value=mean(value)), by=list(psuper, clust_label)]
 
 	# make nice colours
-	col_vals 	= make_col_vals(cuts_dt$label_input, palette)
+	col_vals 	= .make_col_vals(cuts_dt$label_input, palette)
 
 	# plot
 	g = ggplot(means_dt) +

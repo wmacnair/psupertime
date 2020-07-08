@@ -4,7 +4,9 @@
 \name{tf_human}
 \alias{tf_human}
 \title{List of human transcription factors}
-\format{A character vector of length 795}
+\format{
+A character vector of length 795
+}
 \source{
 \url{https://www.grnpedia.org/trrust/downloadnetwork.php}
 }

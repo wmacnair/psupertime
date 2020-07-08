@@ -4,9 +4,14 @@
 \alias{plot_double_psupertime_confusion}
 \title{Plots the confusion matrices of two psupertime objects against each other}
 \usage{
-plot_double_psupertime_confusion(double_obj = NULL, psuper_1 = NULL,
-  psuper_2 = NULL, run_names = NULL, plot_var = "prop_true",
-  palette = "BuPu")
+plot_double_psupertime_confusion(
+  double_obj = NULL,
+  psuper_1 = NULL,
+  psuper_2 = NULL,
+  run_names = NULL,
+  plot_var = "prop_true",
+  palette = "BuPu"
+)
 }
 \arguments{
 \item{double_obj}{Result of applying double_psupertime to two previously calculated psupertime objects}

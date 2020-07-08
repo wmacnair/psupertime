@@ -4,18 +4,32 @@
 \alias{psupertime}
 \title{Supervised pseudotime}
 \usage{
-psupertime(x, y, y_labels = NULL, assay_type = "logcounts",
-  sel_genes = "hvg", gene_list = NULL, scale = TRUE, smooth = TRUE,
-  min_expression = 0.01, penalization = "1se",
-  method = "proportional", score = "xentropy", n_folds = 5,
-  test_propn = 0.1, lambdas = NULL, max_iters = 1000, seed = 1234)
+psupertime(
+  x,
+  y,
+  y_labels = NULL,
+  assay_type = "logcounts",
+  sel_genes = "hvg",
+  gene_list = NULL,
+  scale = TRUE,
+  smooth = TRUE,
+  min_expression = 0.01,
+  penalization = "1se",
+  method = "proportional",
+  score = "xentropy",
+  n_folds = 5,
+  test_propn = 0.1,
+  lambdas = NULL,
+  max_iters = 1000,
+  seed = 1234
+)
 }
 \arguments{
 \item{x}{Either SingleCellExperiment object containing a matrix of genes * cells required, or a matrix of log TPM values (also genes * cells).}
 
 \item{y}{Vector of labels, which should have same length as number of columns in sce / x. Factor levels will be taken as the intended order for training.}
 
-\item{y_labels}{Alternative ordering of the labels in y. All labels must be present in y.}
+\item{y_labels}{Alternative ordering and/or subset of the labels in y. All labels must be present in y. Smoothing and scaling are done on the whole dataset, before any subsetting takes place.}
 
 \item{assay_type}{If a SingleCellExperiment object is used as input, specifies which assay is to be used.}
 

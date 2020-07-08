@@ -4,8 +4,14 @@
 \alias{plot_predictions_against_classes}
 \title{Plots confusion matrix of true labels against predicted labels.}
 \usage{
-plot_predictions_against_classes(psuper_obj, new_x = NULL,
-  new_y = NULL, plot_var = "prop_true", palette = "BuPu")
+plot_predictions_against_classes(
+  psuper_obj,
+  new_x = NULL,
+  new_y = NULL,
+  process = FALSE,
+  plot_var = "prop_true",
+  palette = "BuPu"
+)
 }
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}

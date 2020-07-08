@@ -4,8 +4,13 @@
 \alias{plot_double_psupertime}
 \title{Projects two different psupertimes onto each other, using points, side by side}
 \usage{
-plot_double_psupertime(double_obj = NULL, psuper_1 = NULL,
-  psuper_2 = NULL, run_names = NULL, process = FALSE)
+plot_double_psupertime(
+  double_obj = NULL,
+  psuper_1 = NULL,
+  psuper_2 = NULL,
+  run_names = NULL,
+  process = FALSE
+)
 }
 \arguments{
 \item{double_obj}{Result of applying double_psupertime to two previously calculated psupertime objects}

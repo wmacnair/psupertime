@@ -1,46 +1,80 @@
 #################
 #' Supervised pseudotime
 #'
-#' @param x Either SingleCellExperiment object containing a matrix of genes * cells required, or a matrix of log TPM values (also genes * cells).
-#' @param y Vector of labels, which should have same length as number of columns in sce / x. Factor levels will be taken as the intended order for training.
-#' @param y_labels Alternative ordering and/or subset of the labels in y. All labels must be present in y. Smoothing and scaling are done on the whole dataset, before any subsetting takes place.
-#' @param assay_type If a SingleCellExperiment object is used as input, specifies which assay is to be used.
-#' @param sel_genes Method to be used to select interesting genes to be used in psupertime. Must be a string, with permitted values 'hvg', 'all', 'tf_mouse', 'tf_human' and 'list', corresponding to: highly variable genes, all genes, transcription factors in mouse, transcription factors in human, and a user-selected list. If sel_genes='list', then the parameter gene_list must also be specified as input, containing the user-specified list of genes. sel_genes may alternatively be a list, itself, specifying the parameters to be used for selecting highly variable genes via scran, with names 'hvg_cutoff', 'bio_cutoff' (optionally also 'span'). 
-#' @param gene_list If sel_genes is specified as 'list', gene_list specifies the list of user-specified genes.
-#' @param scale Should the log expression data for each gene be scaled to have mean zero and SD 1? Having the same scale ensures that L1-penalization functions properly; typically you would only set this to FALSE if you have already done your own scaling.
-#' @param smooth Should the data be smoothed over neighbours? This is done to denoise the data; if you already done your own denoising, set this to FALSE.
-#' @param min_expression Cutoff for excluding genes based on non-zero expression in only a small proportion of cells; default is 1\% of cells. 
-#' @param penalization Method of selecting level of L1-penalization. 'best' uses the value of lambda giving the best cross-validation accuracy; '1se' corresponds to largest value of lambda within 1 standard error of the best. This increases sparsity with minimal increased error (and is the default). 
-#' @param method Statistical model used for ordinal logistic regression, one of 'proportional', 'forward' and 'backward', corresponding to cumulative proportional odds, forward continuation ratio and backward continuation ratio. 
-#' @param score Cross-validated accuracy to be used to select model. May take values 'x_entropy' (default), or 'class_error', corresponding to cross-entropy and classification error respectively. Cross-entropy is a smooth measure, while classification error is based on discrete labels and tends to be a bit 'lumpy'.
+#' @param x Either SingleCellExperiment object containing a matrix of genes * 
+#' cells required, or a matrix of log TPM values (also genes * cells).
+#' @param y Vector of labels, which should have same length as number of 
+#' columns in sce / x. Factor levels will be taken as the intended order for 
+#' training.
+#' @param y_labels Alternative ordering and/or subset of the labels in y. All 
+#' labels must be present in y. Smoothing and scaling are done on the whole 
+#' dataset, before any subsetting takes place.
+#' @param assay_type If a SingleCellExperiment object is used as input, 
+#' specifies which assay is to be used.
+#' @param sel_genes Method to be used to select interesting genes to be used 
+#' in psupertime. Must be a string, with permitted values 'hvg', 'all', 
+#' 'tf_mouse', 'tf_human' and 'list', corresponding to: highly variable genes, 
+#' all genes, transcription factors in mouse, transcription factors in human, 
+#' and a user-selected list. If sel_genes='list', then the parameter gene_list 
+#' must also be specified as input, containing the user-specified list of 
+#' genes. sel_genes may alternatively be a list, itself, specifying the 
+#' parameters to be used for selecting highly variable genes via scran, with 
+#' names 'hvg_cutoff', 'bio_cutoff'. 
+#' @param gene_list If sel_genes is specified as 'list', gene_list specifies 
+#' the list of user-specified genes.
+#' @param scale Should the log expression data for each gene be scaled to have 
+#' mean zero and SD 1? Having the same scale ensures that L1-penalization 
+#' functions properly; typically you would only set this to FALSE if you have 
+#' already done your own scaling.
+#' @param smooth Should the data be smoothed over neighbours? This is done to 
+#' denoise the data; if you already done your own denoising, set this to FALSE.
+#' We recommend doing your own denoising!
+#' @param min_expression Cutoff for excluding genes based on non-zero 
+#' expression in only a small proportion of cells; default is 1\% of cells. 
+#' @param penalization Method of selecting level of L1-penalization. 'best' 
+#' uses the value of lambda giving the best cross-validation accuracy; '1se' 
+#' corresponds to largest value of lambda within 1 standard error of the best. 
+#' This increases sparsity with minimal increased error (and is the default). 
+#' @param method Statistical model used for ordinal logistic regression, one 
+#' of 'proportional', 'forward' and 'backward', corresponding to cumulative 
+#' proportional odds, forward continuation ratio and backward continuation 
+#' ratio. 
+#' @param score Cross-validated accuracy to be used to select model. May take 
+#' values 'x_entropy' (default), or 'class_error', corresponding to cross-
+#' entropy and classification error respectively. Cross-entropy is a smooth 
+#' measure, while classification error is based on discrete labels and tends 
+#' to be a bit 'lumpy'.
 #' @param n_folds Number of folds to use for cross-validation; default is 5.
-#' @param test_propn Proportion of data to hold out for testing, separate to the cross-validation; default is 0.1 (10\%).
-#' @param lambdas User-specified sequence of lambda values. Should be in decreasing order. 
+#' @param test_propn Proportion of data to hold out for testing, separate to 
+#' the cross-validation; default is 0.1 (10\%).
+#' @param lambdas User-specified sequence of lambda values. Should be in 
+#' decreasing order. 
 #' @param max_iters Maximum number of iterations to run in glmnet.
 #' @param seed Random seed for specifying cross-validation folds and test data
 #' @return psupertime object
 #' @export
 psupertime <- function(x, y, y_labels=NULL, assay_type='logcounts',
-	sel_genes='hvg', gene_list=NULL, scale=TRUE, smooth=TRUE, min_expression=0.01,
-	penalization='1se', method='proportional', score='xentropy', 
-	n_folds=5, test_propn=0.1, lambdas=NULL, max_iters=1e3, seed=1234) {
+	sel_genes='hvg', gene_list=NULL, scale=TRUE, smooth=TRUE, 
+	min_expression=0.01, penalization='1se', method='proportional', 
+	score='xentropy', n_folds=5, test_propn=0.1, lambdas=NULL, max_iters=1e3, 
+	seed=1234) {
 	# parse params
-	x 				= check_x(x, y, assay_type)
-	y 				= check_y(y, y_labels)
-	params 			= check_params(x, y, y_labels, 
+	x 				= .check_x(x, y, assay_type)
+	y 				= .check_y(y, y_labels)
+	ps_params 		= .check_params(x, y, y_labels, 
 		assay_type, sel_genes, gene_list, scale, smooth, 
 		min_expression, penalization, method, score, 
 		n_folds, test_propn, lambdas, max_iters, seed)
 
 	# select genes, do processing of data
-	sel_genes 		= select_genes(x, params)
-	x_data 			= make_x_data(x, sel_genes, params)
+	sel_genes 		= .select_genes(x, ps_params)
+	x_data 			= .make_x_data(x, sel_genes, ps_params)
 
 	# restrict to y_labels, if specified
-	data_list 		= restrict_to_y_labels(x_data, y, y_labels)
+	data_list 		= .restrict_to_y_labels(x_data, y, y_labels)
 
 	# make nice data for ordinal regression
-	test_idx 		= get_test_idx(y, params)
+	test_idx 		= .get_test_idx(y, ps_params)
 	
 	# get test data
 	y_test 			= y[test_idx]
@@ -49,22 +83,25 @@ psupertime <- function(x, y, y_labels=NULL, assay_type='logcounts',
 	x_train 		= x_data[!test_idx, ]
 
 	# do tests on different folds
-	fold_list 		= get_fold_list(y_train, params)
-	scores_train 	= train_on_folds(x_train, y_train, fold_list, params)
+	fold_list 		= .get_fold_list(y_train, ps_params)
+	scores_train 	= .train_on_folds(x_train, y_train, fold_list, ps_params)
 
 	# find best scoring lambda options, train model on these
-	mean_train 		= calc_mean_train(scores_train)
-	best_dt 		= calc_best_lambdas(mean_train)
-	best_lambdas 	= get_best_lambdas(best_dt, params)
-	glmnet_best 	= get_best_fit(x_train, y_train, params)
-	scores_dt 		= make_scores_dt(glmnet_best, x_test, y_test, scores_train)
+	mean_train 		= .calc_mean_train(scores_train)
+	best_dt 		= .calc_best_lambdas(mean_train)
+	best_lambdas 	= .get_best_lambdas(best_dt, ps_params)
+	glmnet_best 	= .get_best_fit(x_train, y_train, ps_params)
+	scores_dt 		= .make_scores_dt(glmnet_best, x_test, y_test, 
+		scores_train)
 
 	# do projections with this model
-	proj_dt 		= calc_proj_dt(glmnet_best, x_data, y, best_lambdas)
-	beta_dt 		= make_best_beta(glmnet_best, best_lambdas)
+	proj_dt 		= .calc_proj_dt(glmnet_best, x_data, y, best_lambdas)
+	beta_dt 		= .make_best_beta(glmnet_best, best_lambdas)
 
 	# make output
-	psuper_obj 		= make_psuper_obj(glmnet_best, x_data, y, x_test, y_test, test_idx, fold_list, proj_dt, beta_dt, best_lambdas, best_dt, scores_dt, params)
+	psuper_obj 		= .make_psuper_obj(glmnet_best, x_data, y, x_test, y_test, 
+		test_idx, fold_list, proj_dt, beta_dt, best_lambdas, best_dt, 
+		scores_dt, ps_params)
 
 	return(psuper_obj)
 }
@@ -74,9 +111,10 @@ psupertime <- function(x, y, y_labels=NULL, assay_type='logcounts',
 #' @importFrom SummarizedExperiment assays
 #' @return list of validated parameters
 #' @keywords internal
-check_x <- function(x, y, assay_type) {
+.check_x <- function(x, y, assay_type) {
 	# check input data looks ok
-	if (!(class(x) %in% c('SingleCellExperiment', 'matrix', 'dgCMatrix', 'dgRMatrix', 'dgTMatrix'))) {
+	if (!(class(x) %in% c('SingleCellExperiment', 'matrix', 'dgCMatrix', 
+			'dgRMatrix', 'dgTMatrix'))) {
 		stop('x must be either a SingleCellExperiment or a matrix of log counts')
 	}
 	if ( class(x)=='SingleCellExperiment') {
@@ -108,7 +146,7 @@ check_x <- function(x, y, assay_type) {
 #'
 #' @return checked labels
 #' @keywords internal
-check_y <- function(y, y_labels) {
+.check_y <- function(y, y_labels) {
 	if ( any(is.na(y)) ) { 
   		stop('input y contains missing values')
 	}
@@ -140,13 +178,12 @@ check_y <- function(y, y_labels) {
 #' @importFrom SummarizedExperiment assays
 #' @return list of validated parameters
 #' @keywords internal
-check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale, smooth, min_expression, 
+.check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale, smooth, min_expression, 
 	penalization, method, score, n_folds, test_propn, lambdas, max_iters, seed) {
 	n_genes 		= nrow(x)
 
 	# check selection of genes is valid
 	sel_genes_list 	= c('hvg', 'all', 'tf_mouse', 'tf_human', 'list')
-	span_default 	= 0.1
 	if (!is.character(sel_genes)) {
 		if ( !is.list(sel_genes) || !all(c('hvg_cutoff', 'bio_cutoff') %in% names(sel_genes)) ) {
 			err_message 	= paste0('sel_genes must be one of ', paste(sel_genes_list, collapse=', '), ', or a list containing the following named numeric elements: hvg_cutoff, bio_cutoff')
@@ -154,11 +191,6 @@ check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale
 		}
 		hvg_cutoff 	= sel_genes$hvg_cutoff
 		bio_cutoff 	= sel_genes$bio_cutoff
-		if (is.null(sel_genes$span)) {
-			span 		= span_default
-		} else {
-			span 		= sel_genes$span
-		}
 		sel_genes 	= 'hvg'
 	} else {
 		if ( !(sel_genes %in% sel_genes_list) ) {
@@ -170,16 +202,13 @@ check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale
 			}
 			hvg_cutoff 		= NULL
 			bio_cutoff		= NULL
-			span 			= NULL
 		} else if (sel_genes=='hvg') {
 			message('using default parameters to identify highly variable genes')
 			hvg_cutoff 		= 0.1
 			bio_cutoff		= 0.5
-			span 			= span_default
 		} else {
 			hvg_cutoff 		= NULL
 			bio_cutoff		= NULL
-			span 			= NULL
 		}
 	}
 
@@ -234,13 +263,12 @@ check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale
 	}
 
 	# put into list
-	params 	= list(
+	ps_params 	= list(
 		n_genes 		= n_genes
 		,assay_type 	= assay_type
 		,sel_genes 		= sel_genes
 		,hvg_cutoff 	= hvg_cutoff
 		,bio_cutoff 	= bio_cutoff
-		,span 			= span
 		,gene_list 		= gene_list
 		,smooth 		= smooth
 		,scale 			= scale
@@ -254,18 +282,18 @@ check_params <- function(x, y, y_labels, assay_type, sel_genes, gene_list, scale
 		,max_iters 		= max_iters
 		,seed 			= seed
 		)
-	return(params)
+	return(ps_params)
 }
 
 #' Select genes for use in regression
 #'
 #' @importFrom SingleCellExperiment SingleCellExperiment
 #' @param x SingleCellExperiment class containing all cells and genes required, or matrix of counts
-#' @param params List of all parameters specified.
+#' @param ps_params List of all parameters specified.
 #' @keywords internal
-select_genes <- function(x, params) {
+.select_genes <- function(x, ps_params) {
 	# unpack
-	sel_genes 	= params$sel_genes
+	sel_genes 	= ps_params$sel_genes
 	if ( sel_genes=='hvg' ) {
 		if ( class(x)=='SingleCellExperiment' ) {
 			sce 		= x
@@ -274,10 +302,10 @@ select_genes <- function(x, params) {
 		} else { stop('class of x must be either matrix or SingleCellExperiment') }
 
 		# calculate selected genes
-		sel_genes 	= calc_hvg_genes(sce, params, do_plot=FALSE)
+		sel_genes 	= .calc_hvg_genes(sce, ps_params, do_plot=FALSE)
 
 	} else if ( sel_genes=='list' ) {
-		sel_genes 	= params$gene_list
+		sel_genes 	= ps_params$gene_list
 
 	} else {
 		if ( sel_genes=='all' ) {
@@ -295,9 +323,9 @@ select_genes <- function(x, params) {
 	}
 
 	# restrict to genes which are expressed in at least some proportion of cells
-	if ( params$min_expression > 0 ) {
+	if ( ps_params$min_expression > 0 ) {
 		# calc expressed genes
-		expressed_genes 	= calc_expressed_genes(x, params)
+		expressed_genes 	= .calc_expressed_genes(x, ps_params)
 
 		# list missing genes
 		missing_g 			= setdiff(sel_genes, expressed_genes)
@@ -315,7 +343,7 @@ select_genes <- function(x, params) {
 #' Calculates list of highly variable genes (according to approach in scran).
 #'
 #' @param x SingleCellExperiment class or matrix of log counts
-#' @param params List of all parameters specified.
+#' @param ps_params List of all parameters specified.
 #' @import data.table
 #' @importFrom data.table setorder
 #' @importFrom ggplot2 ggplot
@@ -327,11 +355,10 @@ select_genes <- function(x, params) {
 #' @importFrom ggplot2 theme_light
 #' @importFrom ggplot2 labs
 #' @importFrom Matrix rowMeans
-#' @importFrom scran trendVar
-#' @importFrom scran decomposeVar
+#' @importFrom scran modelGeneVar
 #' @importFrom SummarizedExperiment assay
 #' @keywords internal
-calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
+.calc_hvg_genes <- function(sce, ps_params, do_plot=FALSE) {
 	message('identifying highly variable genes')
 	assay_type 		= 'logcounts'
 	if (!(assay_type %in% names(assays(sce)))) {
@@ -343,9 +370,9 @@ calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	if ( all(gene_means<=scran_min_mean) ) {
 		stop('Gene mean values are too low to identify HVGs (scran removes genes with\n  mean less than 0.1. Is your data scaled correctly?')
 	}
-	span 			= ifelse(is.null(params$span), 0.1, params$span)
-	var_fit 		= trendVar(assay(sce, assay_type), method="loess", loess.args=list(span=span))
-	var_out 		= decomposeVar(sce, var_fit, assay.type=assay_type)
+
+	# fit variance trend
+	var_out 		= modelGeneVar(sce)
 
 	# plot trends identified
 	var_dt 			= as.data.table(var_out)
@@ -367,23 +394,23 @@ calc_hvg_genes <- function(sce, params, do_plot=FALSE) {
 	}
 
 	# restrict to highly variable genes
-	hvg_dt 			= var_dt[ FDR <= params$hvg_cutoff & bio >= params$bio_cutoff ]
+	hvg_dt 			= var_dt[ FDR <= ps_params$hvg_cutoff & bio >= ps_params$bio_cutoff ]
 	setorder(hvg_dt, -bio)
 	sel_genes 		= hvg_dt$symbol
 
 	return(sel_genes)
 }
 
-#' Restrict to genes with minimum proportion of expression defined in params$min_expression
+#' Restrict to genes with minimum proportion of expression defined in ps_params$min_expression
 #'
 #' @param x SingleCellExperiment class containing all cells and genes required
-#' @param params List of all parameters specified.
+#' @param ps_params List of all parameters specified.
 #' @importFrom Matrix rowMeans
 #' @importFrom SummarizedExperiment assay
 #' @keywords internal
-calc_expressed_genes <- function(x, params) {
+.calc_expressed_genes <- function(x, ps_params) {
 	# check whether necessary
-	if (params$min_expression==0) {
+	if (ps_params$min_expression==0) {
 		return(rownames(x))
 	}
 
@@ -394,7 +421,7 @@ calc_expressed_genes <- function(x, params) {
 		x_mat 		= x
 	} else { stop('x must be either SingleCellExperiment or (possibly sparse) matrix') }
 	prop_expressed 	= rowMeans( x_mat>0 )
-	expressed_genes = names(prop_expressed[ prop_expressed>params$min_expression ])
+	expressed_genes = names(prop_expressed[ prop_expressed>ps_params$min_expression ])
 
 	return(expressed_genes)
 }
@@ -404,7 +431,7 @@ calc_expressed_genes <- function(x, params) {
 #' @importFrom data.table fread
 #' @return List of all transcription factors specified.
 #' @keywords internal
-get_tf_list <- function(dirs) {
+.get_tf_list <- function(dirs) {
 	tf_path 		= file.path(dirs$data_root, 'fgcz_annotations', 'tf_list.txt')
 	tf_full 		= fread(tf_path)
 	tf_list 		= tf_full$symbol
@@ -415,7 +442,7 @@ get_tf_list <- function(dirs) {
 #' @importFrom stringr str_replace_all
 #' @importFrom stringr str_detect
 #' @keywords internal
-get_go_list <- function(dirs) {
+.get_go_list <- function(dirs) {
 	stop('not implemented yet')
 	lookup_path 	= file.path(dirs$data_root, 'fgcz_annotations', 'genes_annotation_byGene.txt')
 	ensembl_dt 		= fread(lookup_path)
@@ -436,18 +463,18 @@ get_go_list <- function(dirs) {
 #' 
 #' @param x SingleCellExperiment or matrix of log counts
 #' @param sel_genes Selected genes
-#' @param params Full list of parameters
+#' @param ps_params Full list of parameters
 #' @importFrom Matrix t
 #' @importFrom stringr str_detect
 #' @importFrom stringr str_replace_all
 #' @importFrom SummarizedExperiment assay
 #' @return Matrix of dimension # cells by # selected genes
 #' @keywords internal
-make_x_data <- function(x, sel_genes, params) {
+.make_x_data <- function(x, sel_genes, ps_params) {
 	message('processing data')
 	# get matrix
 	if ( class(x)=='SingleCellExperiment' ) {
-		x_data 		= assay(x, params$assay_type)
+		x_data 		= assay(x, ps_params$assay_type)
 	} else if (class(x) %in% c('matrix', 'dgCMatrix', 'dgRMatrix', 'dgTMatrix')) {
 		x_data 		= x
 	} else {
@@ -478,12 +505,12 @@ make_x_data <- function(x, sel_genes, params) {
 	}
 
 	# do smoothing
-	if (params$smooth) {
+	if (ps_params$smooth) {
 		message('    denoising data')
-		if ( is.null(params$knn) ) {
+		if ( is.null(ps_params$knn) ) {
 			knn 	= 10
 		} else {
-			knn 	= params$knn
+			knn 	= ps_params$knn
 		}
 
 		# calculate correlations between all cells
@@ -503,7 +530,7 @@ make_x_data <- function(x, sel_genes, params) {
 	}
 
 	# do scaling
-	if (params$scale) {
+	if (ps_params$scale) {
 		message('    scaling data')
 		x_data 		= apply(x_data, 2, scale)
 	}
@@ -533,7 +560,7 @@ make_x_data <- function(x, sel_genes, params) {
 #' @param x_data matrix output from make_x_data (rows=cells, cols=genes)
 #' @param y factor of cell labels
 #' @param y_labels list of labels to restrict to, and order to use
-restrict_to_y_labels <- function(x_data, y, y_labels) {
+.restrict_to_y_labels <- function(x_data, y, y_labels) {
 	if (is.null(y_labels)) {
 		data_list 	= list(x_data=x_data, y=y)
 	} else {
@@ -552,20 +579,20 @@ restrict_to_y_labels <- function(x_data, y, y_labels) {
 #' @param y list of y labels
 #' @return Indices for test set
 #' @keywords internal
-get_test_idx <- function(y, params) {
-	set.seed(params$seed)
+.get_test_idx <- function(y, ps_params) {
+	set.seed(ps_params$seed)
 	n_samples 	= length(y)
-	test_idx 	= sample(n_samples, round(n_samples*params$test_propn))
+	test_idx 	= sample(n_samples, round(n_samples*ps_params$test_propn))
 	test_idx 	= 1:n_samples %in% test_idx
 
 	return(test_idx)
 }
 
 #' @keywords internal
-get_fold_list <- function(y_train, params) {
-	set.seed(params$seed + 1)
+.get_fold_list <- function(y_train, ps_params) {
+	set.seed(ps_params$seed + 1)
 	n_samples 		= length(y_train)
-	fold_labels 	= rep_len(1:params$n_folds, n_samples)
+	fold_labels 	= rep_len(1:ps_params$n_folds, n_samples)
 	fold_list 		= fold_labels[ sample(n_samples, n_samples) ]
 
 	return(fold_list)
@@ -573,13 +600,13 @@ get_fold_list <- function(y_train, params) {
 
 #' @importFrom data.table data.table
 #' @keywords internal
-train_on_folds <- function(x_train, y_train, fold_list, params) {
-	message(sprintf('cross-validation training, %d folds:', params$n_folds))
+.train_on_folds <- function(x_train, y_train, fold_list, ps_params) {
+	message(sprintf('cross-validation training, %d folds:', ps_params$n_folds))
 	# unpack
-	n_folds 		= params$n_folds
-	lambdas 		= params$lambdas
-	max_iters 		= params$max_iters
-	method 			= params$method
+	n_folds 		= ps_params$n_folds
+	lambdas 		= ps_params$lambdas
+	max_iters 		= ps_params$max_iters
+	method 			= ps_params$method
 
 	# loop
 	scores_dt 		= data.table()
@@ -594,14 +621,14 @@ train_on_folds <- function(x_train, y_train, fold_list, params) {
 		x_train_k 		= x_train[ !fold_idx, ]
 
 		# train model
-		glmnet_fit 		= glmnetcr_propn(x_train_k, y_train_k, 
+		glmnet_fit 		= .glmnetcr_propn(x_train_k, y_train_k, 
 			method 	= method
 			,lambda = lambdas
 			,maxit 	= max_iters
 			)
 
 		# validate model
-		temp_dt 		= calc_scores_for_one_fit(glmnet_fit, x_valid_k, y_valid_k)
+		temp_dt 		= .calc_scores_for_one_fit(glmnet_fit, x_valid_k, y_valid_k)
 		temp_dt[, fold := kk ]
 		scores_dt 		= rbind(scores_dt, temp_dt)
 	}
@@ -617,7 +644,7 @@ train_on_folds <- function(x_train, y_train, fold_list, params) {
 #' 
 #' @importFrom glmnet glmnet
 #' @keywords internal
-glmnetcr_propn <- function(x, y, method = "proportional", weights = NULL, offset = NULL, 
+.glmnetcr_propn <- function(x, y, method = "proportional", weights = NULL, offset = NULL, 
     alpha = 1, nlambda = 100, lambda.min.ratio = NULL, lambda = NULL, 
     standardize = TRUE, thresh = 1e-04, exclude = NULL, penalty.factor = NULL, 
     maxit = 100) {
@@ -643,7 +670,7 @@ glmnetcr_propn <- function(x, y, method = "proportional", weights = NULL, offset
         restructure <- cr.forward(x = x, y = y, weights = weights)
     }
     if (method == "proportional") {
-        restructure <- restructure_propodds(x = x, y = y, weights = weights)
+        restructure <- .restructure_propodds(x = x, y = y, weights = weights)
     }
     glmnet.data <- list(x = restructure[, -c(1, 2)], y = restructure[, 
         "y"], weights = restructure[, "weights"])
@@ -661,7 +688,7 @@ glmnetcr_propn <- function(x, y, method = "proportional", weights = NULL, offset
 }
 
 #' @keywords internal
-restructure_propodds <- function(x, y, weights) {
+.restructure_propodds <- function(x, y, weights) {
 	yname 		= as.character(substitute(y))
 	if (!is.factor(y)) { y = factor(y, exclude = NA) }
 	ylevels 	= levels(y)
@@ -689,7 +716,7 @@ restructure_propodds <- function(x, y, weights) {
 
 #' @importFrom stringr str_detect
 #' @keywords internal
-predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
+.predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 	if (is.null(newx)) {
 		newx 		= object$x
 		y 			= object$y
@@ -886,9 +913,9 @@ predict_glmnetcr_propodds <- function(object, newx=NULL, newy=NULL, ...) {
 
 #' @importFrom data.table data.table
 #' @keywords internal
-calc_scores_for_one_fit <- function(glmnet_fit, x_valid, y_valid) {
+.calc_scores_for_one_fit <- function(glmnet_fit, x_valid, y_valid) {
 	# get predictions
-	predictions 	= predict_glmnetcr_propodds(glmnet_fit, x_valid, y_valid)
+	predictions 	= .predict_glmnetcr_propodds(glmnet_fit, x_valid, y_valid)
 	pred_classes 	= predictions$class
 	probs 			= predictions$probs
 	lambdas 		= glmnet_fit$lambda
@@ -900,7 +927,7 @@ calc_scores_for_one_fit <- function(glmnet_fit, x_valid, y_valid) {
 	# calculate various accuracy measures
 	scores_mat 		= sapply(
 		1:n_lambdas, 
-		function(jj) calc_multiple_scores(pred_classes[,jj], probs[,,jj], y_valid, class_levels)
+		function(jj) .calc_multiple_scores(pred_classes[,jj], probs[,,jj], y_valid, class_levels)
 		)
 	# store results
 	scores_wide 	= data.table(
@@ -916,7 +943,7 @@ calc_scores_for_one_fit <- function(glmnet_fit, x_valid, y_valid) {
 }
 
 #' @keywords internal
-calc_multiple_scores <- function(pred_classes, probs, y_valid, class_levels) {
+.calc_multiple_scores <- function(pred_classes, probs, y_valid, class_levels) {
 	# calculate some intermediate variables
 	# y_valid_int 	= as.integer(y_valid)
 	# pred_int 		= sapply(pred_classes, function(i) which(i==class_levels))
@@ -925,7 +952,7 @@ calc_multiple_scores <- function(pred_classes, probs, y_valid, class_levels) {
 
 	# calculate optional scores
 	class_error 	= mean(pred_classes!=y_valid)
-	xentropy 		= mean(xentropy_fn(probs, bin_mat))
+	xentropy 		= mean(.xentropy_fn(probs, bin_mat))
 
 	scores_vec 		= c(
 		class_error 	= class_error, 
@@ -936,7 +963,7 @@ calc_multiple_scores <- function(pred_classes, probs, y_valid, class_levels) {
 }
 
 #' @keywords internal
-xentropy_fn <- function(p_mat, bin_mat) {
+.xentropy_fn <- function(p_mat, bin_mat) {
 	# calculate standard xentropy values
 	xentropy 	= -rowSums(bin_mat * log2(p_mat), na.rm=TRUE)
 
@@ -950,7 +977,7 @@ xentropy_fn <- function(p_mat, bin_mat) {
 }
 
 #' @keywords internal
-calc_mean_train <- function(scores_train) {
+.calc_mean_train <- function(scores_train) {
 	# calculate mean scores
 	mean_train 			= scores_train[, 
 		list(
@@ -967,7 +994,7 @@ calc_mean_train <- function(scores_train) {
 }
 
 #' @keywords internal
-calc_best_lambdas <- function(mean_train) {
+.calc_best_lambdas <- function(mean_train) {
 	# 
 	best_dt = mean_train[, 
 		list(
@@ -985,19 +1012,19 @@ calc_best_lambdas <- function(mean_train) {
 }
 
 #' @keywords internal
-get_best_lambdas <- function(best_dt, params) {
+.get_best_lambdas <- function(best_dt, ps_params) {
 	# restrict to selected score, extract values
-	sel_score 		= params$score
+	sel_score 		= ps_params$score
 	best_lambdas 	= list(
 			best_idx 		= best_dt[ score_var==sel_score ]$best_idx
 			,next_idx 		= best_dt[ score_var==sel_score ]$next_idx
 			,best_lambda 	= best_dt[ score_var==sel_score ]$best_lambda
 			,next_lambda 	= best_dt[ score_var==sel_score ]$next_lambda
 		)
-	if (params$penalization=='1se') {
+	if (ps_params$penalization=='1se') {
 		best_lambdas$which_idx 		= best_lambdas$next_idx
 		best_lambdas$which_lambda 	= best_lambdas$next_lambda
-	} else if (params$penalization=='best') {
+	} else if (ps_params$penalization=='best') {
 		best_lambdas$which_idx 		= best_lambdas$best_idx
 		best_lambdas$which_lambda 	= best_lambdas$best_lambda
 	} else {
@@ -1007,19 +1034,19 @@ get_best_lambdas <- function(best_dt, params) {
 }
 
 #' @keywords internal
-get_best_fit <- function(x_train, y_train, params) {
+.get_best_fit <- function(x_train, y_train, ps_params) {
 	message('fitting best model with all training data')
-	glmnet_best 	= glmnetcr_propn(
+	glmnet_best 	= .glmnetcr_propn(
 		x_train, y_train
-		,method = params$method
-		,lambda = params$lambdas
-		,maxit 	= params$max_iters
+		,method = ps_params$method
+		,lambda = ps_params$lambdas
+		,maxit 	= ps_params$max_iters
 		)
 	return(glmnet_best)
 }
 
-make_scores_dt <- function(glmnet_best, x_test, y_test, scores_train) {
-	scores_test 	= calc_scores_for_one_fit(glmnet_best, x_test, y_test)
+.make_scores_dt <- function(glmnet_best, x_test, y_test, scores_train) {
+	scores_test 	= .calc_scores_for_one_fit(glmnet_best, x_test, y_test)
 	scores_test[, fold := NA]
 	scores_test[, data := 'test' ]
 	scores_dt 		= rbind(scores_train, scores_test)
@@ -1031,7 +1058,7 @@ make_scores_dt <- function(glmnet_best, x_test, y_test, scores_train) {
 #' @importFrom data.table data.table
 #' @importFrom stringr str_detect
 #' @keywords internal
-calc_proj_dt <- function(glmnet_best, x_data, y_labels, best_lambdas) {
+.calc_proj_dt <- function(glmnet_best, x_data, y_labels, best_lambdas) {
 	# unpack
 	which_idx 		= best_lambdas$which_idx
 
@@ -1056,7 +1083,7 @@ calc_proj_dt <- function(glmnet_best, x_data, y_labels, best_lambdas) {
 	# a0_best 	= glmnet_best$a0[[which_idx]]
 	# y_proj 		= a0_best + x_data %*% matrix(beta_best, ncol=1)
 	psuper 			= x_data %*% matrix(beta_best, ncol=1)
-	predictions 	= predict_glmnetcr_propodds(glmnet_best, x_data, y_labels)
+	predictions 	= .predict_glmnetcr_propodds(glmnet_best, x_data, y_labels)
 	pred_classes 	= factor(predictions$class[, which_idx], levels=levels(glmnet_best$y))
 
 	# put into data.table
@@ -1077,7 +1104,7 @@ calc_proj_dt <- function(glmnet_best, x_data, y_labels, best_lambdas) {
 #' @importFrom stringr str_detect
 #' @return data.table containing learned coefficients for all genes used as input.
 #' @keywords internal
-make_best_beta <- function(glmnet_best, best_lambdas) {
+.make_best_beta <- function(glmnet_best, best_lambdas) {
 	cut_idx 	= str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
 	best_beta 	= glmnet_best$beta[!cut_idx, best_lambdas$which_idx]
 	beta_dt 	= data.table( beta=best_beta, symbol=names(best_beta) )
@@ -1091,7 +1118,7 @@ make_best_beta <- function(glmnet_best, best_lambdas) {
 #' @importFrom data.table data.table
 #' @importFrom stringr str_detect
 #' @keywords internal
-make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, test_idx, fold_list, proj_dt, beta_dt, best_lambdas, best_dt, scores_dt, params) {
+.make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, test_idx, fold_list, proj_dt, beta_dt, best_lambdas, best_dt, scores_dt, ps_params) {
 	# make cuts_dt
 	which_idx 	= best_lambdas$which_idx
 	cut_idx 	= str_detect(rownames(glmnet_best$beta), '^cp[0-9]+$')
@@ -1108,7 +1135,7 @@ make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, test_idx, fo
 		# predicted labels
 	# which of best / 1se is in use
 	psuper_obj 	= list(
-		params 			= params
+		ps_params 		= ps_params
 		,glmnet_best 	= glmnet_best
 		,x_data 		= x_data
 		,y 				= y
@@ -1132,12 +1159,12 @@ make_psuper_obj <- function(glmnet_best, x_data, y, x_test, y_test, test_idx, fo
 
 #' Text to summarize psupertime object
 #' @keywords internal
-psummarize <- function(psuper_obj) {
+.psummarize <- function(psuper_obj) {
 	# what trained on
 	n_cells 	= dim(psuper_obj$x_data)[1]
-	n_genes 	= psuper_obj$params$n_genes
+	n_genes 	= psuper_obj$ps_params$n_genes
 	n_sel 		= dim(psuper_obj$x_data)[2]
-	sel_genes 	= psuper_obj$params$sel_genes
+	sel_genes 	= psuper_obj$ps_params$sel_genes
 
 	# labels used
 	label_order = paste(levels(psuper_obj$y), collapse=', ')
@@ -1166,7 +1193,7 @@ psummarize <- function(psuper_obj) {
 
 #' @export
 print.psupertime <- function(psuper_obj) {
-	psummary 	= psummarize(psuper_obj)
+	psummary 	= .psummarize(psuper_obj)
 	cat(psummary)
 }
 

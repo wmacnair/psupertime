@@ -4,8 +4,11 @@
 \alias{plot_labels_over_psupertime}
 \title{Plots labels over their projected values on psupertime.}
 \usage{
-plot_labels_over_psupertime(psuper_obj, label_name = "Ordered labels",
-  palette = "RdBu")
+plot_labels_over_psupertime(
+  psuper_obj,
+  label_name = "Ordered labels",
+  palette = "RdBu"
+)
 }
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}

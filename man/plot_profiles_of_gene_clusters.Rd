@@ -4,8 +4,11 @@
 \alias{plot_profiles_of_gene_clusters}
 \title{Plot heatmap of gene clusters}
 \usage{
-plot_profiles_of_gene_clusters(go_list, label_name = "Ordered labels",
-  palette = "RdBu")
+plot_profiles_of_gene_clusters(
+  go_list,
+  label_name = "Ordered labels",
+  palette = "RdBu"
+)
 }
 \arguments{
 \item{go_list}{Output from GO analysis}

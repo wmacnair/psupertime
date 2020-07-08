@@ -24,7 +24,8 @@ Imports: cowplot,
     scales,
     topGO
 Suggests: 
-    BiocStyle, 
-    rmarkdown
-RoxygenNote: 6.1.1
+    BiocStyle,
+    rmarkdown,
+    testthat
+RoxygenNote: 7.1.1
 VignetteBuilder: knitr

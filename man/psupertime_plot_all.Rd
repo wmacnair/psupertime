@@ -4,8 +4,13 @@
 \alias{psupertime_plot_all}
 \title{Convenience function to do multiple plots}
 \usage{
-psupertime_plot_all(psuper_obj, output_dir = ".", tag = "",
-  label_name = "Ordered labels", ext = "png")
+psupertime_plot_all(
+  psuper_obj,
+  output_dir = ".",
+  tag = "",
+  label_name = "Ordered labels",
+  ext = "png"
+)
 }
 \arguments{
 \item{psuper_obj}{Psupertime object, output from psupertime}
