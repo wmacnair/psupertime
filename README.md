@@ -54,5 +54,5 @@ Will
 
 ### System requirements
 
-`psupertime` requires R (>= 3.4.3), and the following dependencies: `ggplot2` 3.1.1, `data.table` 1.12.2, `glmnet` 2.0-16, `scales` 1.0.0, `stringr` 1.4.0, `scran` 1.10.2, `SingleCellExperiment` 1.4.1, `SummarizedExperiment` 1.12.0, `RColorBrewer` 1.1-2.
+`psupertime` requires R (>= 3.4.3), and the following dependencies: `ggplot2` 3.1.1, `data.table` 1.12.2, `glmnet` 2.0-16, `scales` 1.0.0, `stringr` 1.4.0, `scran` 1.10.2, `SingleCellExperiment` 1.4.1, `SummarizedExperiment` 1.12.0, `RColorBrewer` 1.1-2, `topGO` 2.46.0.
 
